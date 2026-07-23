@@ -1,0 +1,12 @@
+{
+  "name": "skoolclone-admin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SkoolClone Admin - panel de escritorio (Tauri v2 -> .msi)",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

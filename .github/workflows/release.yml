@@ -1,0 +1,168 @@
+name: Release
+
+# Se dispara al empujar un tag vX.Y.Z (o manualmente).
+# Compila el .msi (Windows) y el .apk (Android), publica una Release
+# con ambos binarios y BORRA las releases anteriores (solo se mantiene la ultima).
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Tag de version (ej. v0.1.0)'
+        required: true
+        default: 'v0.0.0-manual'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # ============ 1) MSI (escritorio, Tauri) ============
+  build-msi:
+    name: Build .msi (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar toolchain de Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache de Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/admin-windows/src-tauri
+
+      - name: Compilar MSI
+        working-directory: apps/admin-windows
+        run: |
+          npm install
+          npx tauri build
+
+      - name: Recolectar MSI
+        shell: bash
+        working-directory: apps/admin-windows
+        run: |
+          mkdir -p ../../dist-artifacts
+          msi=$(ls src-tauri/target/release/bundle/msi/*.msi | head -n1)
+          cp "$msi" "../../dist-artifacts/SkoolClone-Admin-${GITHUB_REF_NAME}.msi"
+          ls -la ../../dist-artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msi
+          path: dist-artifacts/*.msi
+          if-no-files-found: error
+
+  # ============ 2) APK (Android) ============
+  build-apk:
+    name: Build .apk (Android)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar paquetes del SDK
+        run: |
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null || true
+
+      - name: Configurar Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compilar APK (debug, instalable)
+        working-directory: apps/android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Recolectar APK
+        working-directory: apps/android
+        run: |
+          mkdir -p ../../dist-artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk "../../dist-artifacts/SkoolClone-${GITHUB_REF_NAME}.apk"
+          ls -la ../../dist-artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: dist-artifacts/*.apk
+          if-no-files-found: error
+
+  # ============ 3) Publicar Release + limpiar anteriores ============
+  release:
+    name: Publicar Release
+    needs: [build-msi, build-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar artefactos
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Aplanar artefactos
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.msi' -o -name '*.apk' \) -exec cp {} release/ \;
+          echo "Contenido de la release:"
+          ls -la release
+
+      - name: Resolver tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publicar Release (ultima)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: SkoolClone ${{ steps.tag.outputs.tag }}
+          body: |
+            ## SkoolClone ${{ steps.tag.outputs.tag }}
+
+            Binarios listos para instalar (compilados automaticamente por GitHub Actions):
+
+            | Plataforma | Archivo |
+            | --- | --- |
+            | Windows (escritorio, admin) | `SkoolClone-Admin-${{ steps.tag.outputs.tag }}.msi` |
+            | Android (usuario) | `SkoolClone-${{ steps.tag.outputs.tag }}.apk` |
+
+            > El APK es de build *debug* (instalable habilitando "origenes desconocidos").
+            > Solo se mantiene la **ultima** release; las anteriores se eliminan automaticamente.
+          files: release/*
+          make_latest: true
+
+      - name: Eliminar releases anteriores (mantener solo la ultima)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current="${{ steps.tag.outputs.tag }}"
+          echo "Manteniendo solo: $current"
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName -q '.[].tagName' \
+            | while read -r tag; do
+                if [ -n "$tag" ] && [ "$tag" != "$current" ]; then
+                  echo "Eliminando release y tag antiguos: $tag"
+                  gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+                fi
+              done

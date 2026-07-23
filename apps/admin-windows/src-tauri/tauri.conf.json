@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SkoolClone Admin",
+  "version": "0.1.0",
+  "identifier": "com.skoolclone.admin",
+  "build": {
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SkoolClone Admin",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi"],
+    "publisher": "jhonsu01",
+    "copyright": "Copyright (c) 2026 jhonsu01",
+    "category": "Business",
+    "shortDescription": "Panel de administracion de SkoolClone",
+    "longDescription": "Consola de escritorio para administrar la plataforma SkoolClone: cobros manuales, pasarela, payouts y auditoria.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ]
+  }
+}
