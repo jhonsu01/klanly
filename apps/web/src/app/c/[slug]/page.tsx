@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, money } from "@/lib/api-client";
+import { api, money, uploadFile } from "@/lib/api-client";
 
 type Membership = { role: string; status: string; level: number; points: number } | null;
 type Community = {
-  id: string; slug: string; name: string; description?: string;
-  priceCents: number; currency: string; billingPeriod: string;
+  id: string; slug: string; name: string; description?: string; iconUrl?: string | null;
+  priceCents: number; currency: string; billingPeriod: string; isPublic?: boolean;
   memberCount: number; myMembership: Membership;
 };
 type Post = { id: string; title?: string; body?: string; likeCount: number; authorName: string };
@@ -18,7 +18,7 @@ type Ev = { id: string; title: string; description?: string; startsAt: string; l
 type Msg = { id: string; body: string; authorName: string; createdAt: string };
 type Noti = { id: string; body: string; type: string; read: boolean; createdAt: string };
 
-type Tab = "community" | "classroom" | "calendar" | "leaderboard" | "members" | "chat" | "review";
+type Tab = "community" | "classroom" | "calendar" | "leaderboard" | "members" | "chat" | "about" | "settings" | "review";
 
 export default function CommunityPage({ params }: { params: { slug: string } }) {
   const slug = params.slug;
@@ -42,6 +42,11 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [proofUrl, setProofUrl] = useState("");
   const [chatText, setChatText] = useState("");
   const [evForm, setEvForm] = useState({ title: "", startsAt: "", linkUrl: "" });
+  const [busy, setBusy] = useState(false);
+  const [settings, setSettings] = useState({ name: "", description: "", priceUsd: "0", iconUrl: "", isPublic: true });
+  const [openPost, setOpenPost] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, { id: string; body: string; authorName: string }[]>>({});
+  const [commentText, setCommentText] = useState("");
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -49,6 +54,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     try {
       const com: Community = await api(`/communities/${slug}`);
       setC(com);
+      setSettings({ name: com.name, description: com.description || "", priceUsd: (com.priceCents / 100).toString(), iconUrl: com.iconUrl || "", isPublic: com.isPublic ?? true });
       const [p, cs, ms] = await Promise.all([
         api(`/communities/${slug}/posts`).catch(() => []),
         api(`/communities/${slug}/courses`).catch(() => []),
@@ -98,6 +104,35 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   };
   const payManual = async () => {
     try { await api(`/payments/orders/manual`, "POST", { communityId: c.id, proofUrl }); setProofUrl(""); flash("Comprobante enviado. En revisión ✔"); load(); }
+    catch (e: any) { flash(e.message, false); }
+  };
+  const uploadProof = async (file?: File) => {
+    if (!file) return;
+    try { setBusy(true); const url = await uploadFile(file, "proofs"); setProofUrl(url); flash("Comprobante subido ✔"); }
+    catch (e: any) { flash(e.message, false); } finally { setBusy(false); }
+  };
+  const uploadIcon = async (file?: File) => {
+    if (!file) return;
+    try { setBusy(true); const url = await uploadFile(file, "covers"); setSettings((s) => ({ ...s, iconUrl: url })); flash("Ícono subido ✔"); }
+    catch (e: any) { flash(e.message, false); } finally { setBusy(false); }
+  };
+  const saveSettings = async () => {
+    try {
+      await api(`/communities/${c.slug}`, "PATCH", {
+        name: settings.name, description: settings.description,
+        priceCents: Math.round(parseFloat(settings.priceUsd || "0") * 100),
+        iconUrl: settings.iconUrl || undefined, isPublic: settings.isPublic,
+      });
+      flash("Comunidad actualizada ✔"); load();
+    } catch (e: any) { flash(e.message, false); }
+  };
+  const toggleComments = async (postId: string) => {
+    if (openPost === postId) { setOpenPost(null); return; }
+    setOpenPost(postId);
+    try { const cs = await api(`/posts/${postId}/comments`); setComments((m) => ({ ...m, [postId]: cs })); } catch {}
+  };
+  const addComment = async (postId: string) => {
+    try { await api(`/posts/${postId}/comments`, "POST", { body: commentText }); setCommentText(""); const cs = await api(`/posts/${postId}/comments`); setComments((m) => ({ ...m, [postId]: cs })); }
     catch (e: any) { flash(e.message, false); }
   };
   const publish = async () => { try { await api(`/communities/${c.slug}/posts`, "POST", { body: postBody }); setPostBody(""); flash("Publicado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
@@ -158,10 +193,11 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       {isPending && (
         <div className="card" style={{ marginTop: 16 }}>
           <h2>Pago manual (comprobante)</h2>
-          <div className="muted">Transfiere {money(c.priceCents, c.currency)} y pega el enlace de tu comprobante. El productor lo revisará.</div>
-          <label>URL del comprobante</label>
-          <input value={proofUrl} onChange={(e) => setProofUrl(e.target.value)} placeholder="https://…/comprobante.jpg" />
-          <button onClick={payManual} disabled={!proofUrl}>Enviar comprobante</button>
+          <div className="muted">Transfiere {money(c.priceCents, c.currency)} y sube la foto/captura de tu comprobante. El productor lo revisará.</div>
+          <label>Comprobante (imagen)</label>
+          <input type="file" accept="image/*" onChange={(e) => uploadProof(e.target.files?.[0])} />
+          {proofUrl && <img src={proofUrl} alt="comprobante" style={{ maxWidth: 220, borderRadius: 8, marginTop: 8, display: "block" }} />}
+          <button onClick={payManual} disabled={!proofUrl || busy}>{busy ? "Subiendo…" : "Enviar comprobante"}</button>
         </div>
       )}
       {isMember && c.myMembership && (
@@ -176,8 +212,10 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         <TabBtn id="calendar" label="Calendar" />
         <TabBtn id="leaderboard" label="Leaderboards" />
         <TabBtn id="members" label={`Members (${members.length})`} />
+        <TabBtn id="about" label="About" />
         {isMember && <TabBtn id="chat" label="Chat" />}
         {isManager && <TabBtn id="review" label={`Comprobantes (${pending.length})`} />}
+        {isOwner && <TabBtn id="settings" label="Ajustes" />}
       </div>
 
       {tab === "community" && (
@@ -189,9 +227,21 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
           <div style={{ marginTop: 16 }}>
             {posts.length === 0 && <div className="muted">Aún no hay publicaciones.</div>}
             {posts.map((p) => (
-              <div className="row" key={p.id}>
-                <div>{p.title && <div style={{ fontWeight: 600 }}>{p.title}</div>}<div>{p.body}</div><div className="muted">{p.authorName}</div></div>
-                <button className="ghost" style={{ marginTop: 0 }} onClick={() => like(p.id)}>👍 {p.likeCount}</button>
+              <div key={p.id} style={{ borderBottom: "1px solid var(--border)", padding: "12px 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <div>{p.title && <div style={{ fontWeight: 600 }}>{p.title}</div>}<div>{p.body}</div><div className="muted">{p.authorName}</div></div>
+                  <button className="ghost" style={{ marginTop: 0 }} onClick={() => like(p.id)}>👍 {p.likeCount}</button>
+                </div>
+                {isMember && <button className="ghost" style={{ marginTop: 8, fontSize: 12, padding: "4px 10px" }} onClick={() => toggleComments(p.id)}>💬 Comentarios</button>}
+                {openPost === p.id && (
+                  <div style={{ marginTop: 8, paddingLeft: 12 }}>
+                    {(comments[p.id] || []).map((cm) => <div key={cm.id} style={{ fontSize: 13, padding: "3px 0" }}><b>{cm.authorName}:</b> {cm.body}</div>)}
+                    <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                      <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Comenta…" onKeyDown={(e) => e.key === "Enter" && commentText && addComment(p.id)} />
+                      <button style={{ marginTop: 0 }} onClick={() => addComment(p.id)} disabled={!commentText}>Enviar</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -269,7 +319,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         <div className="card">
           {members.map((m) => (
             <div className="row" key={m.userId}>
-              <div>{m.displayName} <span className="muted">@{m.handle}</span> · <span className="pill">{m.role}</span> · Nv {m.level} · {m.points} pts</div>
+              <div><a href={`/u/${m.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{m.displayName}</a> <span className="muted">@{m.handle}</span> · <span className="pill">{m.role}</span> · Nv {m.level} · {m.points} pts</div>
               {isOwner && m.role !== "owner" && (
                 <select value={m.role} onChange={(e) => changeRole(m.userId, e.target.value)} style={{ width: "auto", marginTop: 0 }}>
                   <option value="member">member</option>
@@ -296,6 +346,41 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
             <input value={chatText} onChange={(e) => setChatText(e.target.value)} placeholder="Mensaje…" onKeyDown={(e) => e.key === "Enter" && chatText && sendMsg()} />
             <button style={{ marginTop: 0 }} onClick={sendMsg} disabled={!chatText}>Enviar</button>
           </div>
+        </div>
+      )}
+
+      {tab === "about" && (
+        <div className="card">
+          <h2>Acerca de</h2>
+          <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{c.description || "Sin descripción."}</p>
+          <div className="row"><div className="muted">Precio</div><div>{isFree ? "Free" : `${money(c.priceCents, c.currency)}/${c.billingPeriod}`}</div></div>
+          <div className="row"><div className="muted">Miembros</div><div>{c.memberCount}</div></div>
+          <div style={{ marginTop: 12 }}>
+            <div className="muted" style={{ marginBottom: 6 }}>Admins</div>
+            {members.filter((m) => m.role === "owner" || m.role === "admin").map((m) => (
+              <div className="row" key={m.userId}><div><a href={`/u/${m.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{m.displayName}</a> <span className="pill">{m.role}</span></div></div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "settings" && isOwner && (
+        <div className="card">
+          <h2>Ajustes de la comunidad</h2>
+          <label>Nombre</label>
+          <input value={settings.name} onChange={(e) => setSettings({ ...settings, name: e.target.value })} />
+          <label>Descripción</label>
+          <textarea rows={3} value={settings.description} onChange={(e) => setSettings({ ...settings, description: e.target.value })} />
+          <label>Precio mensual (USD, 0 = gratis)</label>
+          <input value={settings.priceUsd} onChange={(e) => setSettings({ ...settings, priceUsd: e.target.value })} />
+          <label>Ícono de la comunidad</label>
+          <input type="file" accept="image/*" onChange={(e) => uploadIcon(e.target.files?.[0])} />
+          {settings.iconUrl && <img src={settings.iconUrl} alt="" style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover", marginTop: 8, display: "block" }} />}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
+            <input type="checkbox" style={{ width: "auto" }} checked={settings.isPublic} onChange={(e) => setSettings({ ...settings, isPublic: e.target.checked })} />
+            Pública (aparece en el descubrimiento)
+          </label>
+          <button onClick={saveSettings} disabled={busy}>Guardar cambios</button>
         </div>
       )}
 

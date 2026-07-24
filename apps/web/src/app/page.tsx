@@ -91,9 +91,14 @@ export default function Home() {
           {me ? (
             <>
               <div className="muted">Conectado como</div>
-              <div style={{ fontSize: 15, marginTop: 4 }}>{me.displayName} <span className="pill">{me.role}</span></div>
+              <div style={{ fontSize: 15, marginTop: 4 }}>
+                <a href={`/u/${me.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{me.displayName}</a> <span className="pill">{me.role}</span>
+              </div>
               <div className="muted">{me.email} · @{me.handle}</div>
-              <button className="ghost" onClick={doLogout}>Cerrar sesión</button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <a href={`/u/${me.handle}`}><button className="ghost">Mi perfil</button></a>
+                <button className="ghost" onClick={doLogout}>Cerrar sesión</button>
+              </div>
             </>
           ) : (
             <>
