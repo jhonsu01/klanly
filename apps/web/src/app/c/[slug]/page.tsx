@@ -208,7 +208,16 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
           <div style={{ marginTop: 16 }}>
             {courses.length === 0 && <div className="muted">Aún no hay cursos.</div>}
             {courses.map((co) => (
-              <div className="row" key={co.id}><div><div style={{ fontWeight: 600 }}>{co.title}</div>{co.description && <div className="muted">{co.description}</div>}</div><span className="pill">Nivel {co.minLevel}+</span></div>
+              <div className="row" key={co.id}>
+                <div>
+                  <a href={`/course/${co.id}`} style={{ fontWeight: 600, color: "var(--text)", textDecoration: "none" }}>{co.title}</a>
+                  {co.description && <div className="muted">{co.description}</div>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="pill">Nivel {co.minLevel}+</span>
+                  <a href={`/course/${co.id}`}><button className="ghost" style={{ marginTop: 0 }}>Abrir →</button></a>
+                </div>
+              </div>
             ))}
           </div>
         </div>
