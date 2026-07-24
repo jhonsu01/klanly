@@ -20,6 +20,7 @@ export async function GET() {
     avatarUrl: u.avatarUrl,
     bio: u.bio,
     country: u.country,
+    twoFactorEnabled: !!u.totpSecret,
   });
 }
 

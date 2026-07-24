@@ -46,6 +46,10 @@ export const communities = pgTable(
     // month | year | one_time | free
     billingPeriod: text("billing_period").notNull().default("free"),
     theme: jsonb("theme").default({}),
+    // F4 afiliados
+    affiliateEnabled: boolean("affiliate_enabled").notNull().default(false),
+    affiliateCommissionPct: numeric("affiliate_commission_pct", { precision: 5, scale: 2 }).notNull().default("0"),
+    payoutTermsDays: integer("payout_terms_days").notNull().default(30), // 30 | 60
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -96,6 +100,7 @@ export const paymentOrders = pgTable(
     reference: text("reference").notNull().unique(), // referencia firmada
     integrityHash: text("integrity_hash").notNull(), // HMAC(reference|amount|currency|secret)
     manualProofUrl: text("manual_proof_url"),
+    referralCode: text("referral_code"), // F4: link de afiliado usado
     reviewedBy: uuid("reviewed_by").references(() => users.id),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -149,13 +154,74 @@ export const payouts = pgTable("payouts", {
   payeeId: uuid("payee_id")
     .notNull()
     .references(() => users.id),
+  communityId: uuid("community_id").references(() => communities.id), // comunidad que autoriza (afiliados)
   amountCents: integer("amount_cents").notNull(),
   currency: text("currency").notNull().default("USD"),
   kind: text("kind").notNull(), // community_earnings | affiliate
-  method: text("method").notNull(), // stripe_connect | manual_transfer
+  method: text("method"), // medio de pago (texto)
   status: text("status").notNull().default("requested"), // requested|approved|paid|rejected
   approvedBy: uuid("approved_by").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ===================== F4: AFILIADOS =====================
+// Autorización de un usuario como afiliado de una comunidad (el productor aprueba)
+export const communityAffiliates = pgTable(
+  "community_affiliates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    code: text("code").notNull().unique(), // código del link de referido
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    approvedBy: uuid("approved_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniq: uniqueIndex("community_affiliates_com_user_uniq").on(t.communityId, t.userId),
+    codeIdx: index("community_affiliates_code_idx").on(t.code),
+  }),
+);
+
+// Comisiones acumuladas por afiliado (saldo). pending -> available (net30/60) -> paid
+export const commissions = pgTable(
+  "commissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    affiliateUserId: uuid("affiliate_user_id")
+      .notNull()
+      .references(() => users.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    orderId: uuid("order_id").references(() => paymentOrders.id),
+    referredUserId: uuid("referred_user_id").references(() => users.id),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull().default("USD"),
+    status: text("status").notNull().default("pending"), // pending | available | paid
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull(),
+    payoutId: uuid("payout_id").references(() => payouts.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    affIdx: index("commissions_affiliate_idx").on(t.affiliateUserId, t.status),
+  }),
+);
+
+// Medio de pago del usuario para recibir comisiones (manual: texto)
+export const payoutMethods = pgTable("payout_methods", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id)
+    .unique(),
+  type: text("type").notNull(), // nequi | bancolombia | paypal | bank | otro
+  details: text("details").notNull(), // número/correo/cuenta
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ===================== CONTENIDO =====================

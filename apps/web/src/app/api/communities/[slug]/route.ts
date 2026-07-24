@@ -39,6 +39,9 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     currency: c.currency,
     billingPeriod: c.billingPeriod,
     isPublic: c.isPublic,
+    affiliateEnabled: c.affiliateEnabled,
+    affiliateCommissionPct: Number(c.affiliateCommissionPct),
+    payoutTermsDays: c.payoutTermsDays,
     memberCount: count,
     myMembership,
   });
@@ -51,6 +54,9 @@ const PatchBody = z.object({
   priceCents: z.number().int().min(0).optional(),
   billingPeriod: z.enum(["free", "month", "year", "one_time"]).optional(),
   isPublic: z.boolean().optional(),
+  affiliateEnabled: z.boolean().optional(),
+  affiliateCommissionPct: z.number().min(0).max(90).optional(),
+  payoutTermsDays: z.union([z.literal(30), z.literal(60)]).optional(),
 });
 
 // Editar la comunidad (solo owner o admin de plataforma)
@@ -78,6 +84,9 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
   if (b.description !== undefined) patch.description = b.description;
   if (b.iconUrl !== undefined) patch.iconUrl = b.iconUrl;
   if (b.isPublic !== undefined) patch.isPublic = b.isPublic;
+  if (b.affiliateEnabled !== undefined) patch.affiliateEnabled = b.affiliateEnabled;
+  if (b.affiliateCommissionPct !== undefined) patch.affiliateCommissionPct = String(b.affiliateCommissionPct);
+  if (b.payoutTermsDays !== undefined) patch.payoutTermsDays = b.payoutTermsDays;
   if (b.priceCents !== undefined) {
     patch.priceCents = b.priceCents;
     patch.billingPeriod = b.priceCents === 0 ? "free" : (b.billingPeriod ?? (c.billingPeriod === "free" ? "month" : c.billingPeriod));

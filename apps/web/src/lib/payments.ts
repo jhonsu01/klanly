@@ -1,5 +1,8 @@
 import { db } from "@/db";
-import { paymentOrders, memberships, subscriptions, communities, auditLog, notifications } from "@/db/schema";
+import {
+  paymentOrders, memberships, subscriptions, communities, auditLog, notifications,
+  communityAffiliates, commissions,
+} from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
 /**
@@ -66,6 +69,46 @@ export async function activateOrderPaid(orderId: string, actorId?: string) {
     type: "payment_approved",
     body: c ? `Tu pago fue aprobado. Ya tienes acceso a ${c.name}.` : "Tu pago fue aprobado.",
   });
+
+  // ---- F4: comisión de afiliado ----
+  if (order.referralCode && c && c.affiliateEnabled) {
+    const [aff] = await db
+      .select()
+      .from(communityAffiliates)
+      .where(
+        and(
+          eq(communityAffiliates.communityId, order.communityId),
+          eq(communityAffiliates.code, order.referralCode),
+          eq(communityAffiliates.status, "approved"),
+        ),
+      )
+      .limit(1);
+
+    // No se paga comisión por auto-referirse
+    if (aff && aff.userId !== order.userId) {
+      const pct = Number(c.affiliateCommissionPct ?? 0);
+      const commissionCents = Math.round((order.amountCents * pct) / 100);
+      if (commissionCents > 0) {
+        const availableAt = new Date(Date.now() + (c.payoutTermsDays ?? 30) * 24 * 60 * 60 * 1000);
+        await db.insert(commissions).values({
+          affiliateUserId: aff.userId,
+          communityId: order.communityId,
+          orderId: order.id,
+          referredUserId: order.userId,
+          amountCents: commissionCents,
+          currency: order.currency,
+          status: "pending",
+          availableAt,
+        });
+        await db.insert(notifications).values({
+          userId: aff.userId,
+          communityId: order.communityId,
+          type: "commission_earned",
+          body: `Ganaste una comisión de ${(commissionCents / 100).toFixed(2)} ${order.currency} (disponible en ${c.payoutTermsDays} días).`,
+        });
+      }
+    }
+  }
 
   return { ok: true as const };
 }

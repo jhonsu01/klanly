@@ -7,8 +7,11 @@ type Membership = { role: string; status: string; level: number; points: number 
 type Community = {
   id: string; slug: string; name: string; description?: string; iconUrl?: string | null;
   priceCents: number; currency: string; billingPeriod: string; isPublic?: boolean;
+  affiliateEnabled?: boolean; affiliateCommissionPct?: number; payoutTermsDays?: number;
   memberCount: number; myMembership: Membership;
 };
+type Applicant = { userId: string; code: string; status: string; displayName: string; handle: string };
+type AffPayout = { id: string; amountCents: number; currency: string; method?: string; status: string; payeeName: string };
 type Post = { id: string; title?: string; body?: string; likeCount: number; authorName: string };
 type Course = { id: string; title: string; description?: string; minLevel: number };
 type Member = { userId: string; role: string; level: number; points: number; displayName: string; handle: string };
@@ -18,7 +21,7 @@ type Ev = { id: string; title: string; description?: string; startsAt: string; l
 type Msg = { id: string; body: string; authorName: string; createdAt: string };
 type Noti = { id: string; body: string; type: string; read: boolean; createdAt: string };
 
-type Tab = "community" | "classroom" | "calendar" | "leaderboard" | "members" | "chat" | "about" | "settings" | "review";
+type Tab = "community" | "classroom" | "calendar" | "leaderboard" | "members" | "chat" | "about" | "affiliates" | "settings" | "review";
 
 export default function CommunityPage({ params }: { params: { slug: string } }) {
   const slug = params.slug;
@@ -43,10 +46,14 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [chatText, setChatText] = useState("");
   const [evForm, setEvForm] = useState({ title: "", startsAt: "", linkUrl: "" });
   const [busy, setBusy] = useState(false);
-  const [settings, setSettings] = useState({ name: "", description: "", priceUsd: "0", iconUrl: "", isPublic: true });
+  const [settings, setSettings] = useState({ name: "", description: "", priceUsd: "0", iconUrl: "", isPublic: true, affiliateEnabled: false, commissionPct: "0", payoutTermsDays: 30 });
   const [openPost, setOpenPost] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, { id: string; body: string; authorName: string }[]>>({});
   const [commentText, setCommentText] = useState("");
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [affPayouts, setAffPayouts] = useState<AffPayout[]>([]);
+  const [myAff, setMyAff] = useState<{ code: string; status: string } | null>(null);
+  const [refCode, setRefCode] = useState<string | null>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -54,7 +61,12 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     try {
       const com: Community = await api(`/communities/${slug}`);
       setC(com);
-      setSettings({ name: com.name, description: com.description || "", priceUsd: (com.priceCents / 100).toString(), iconUrl: com.iconUrl || "", isPublic: com.isPublic ?? true });
+      setSettings({
+        name: com.name, description: com.description || "", priceUsd: (com.priceCents / 100).toString(),
+        iconUrl: com.iconUrl || "", isPublic: com.isPublic ?? true,
+        affiliateEnabled: com.affiliateEnabled ?? false, commissionPct: String(com.affiliateCommissionPct ?? 0),
+        payoutTermsDays: com.payoutTermsDays ?? 30,
+      });
       const [p, cs, ms] = await Promise.all([
         api(`/communities/${slug}/posts`).catch(() => []),
         api(`/communities/${slug}/courses`).catch(() => []),
@@ -62,11 +74,28 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       ]);
       setPosts(p); setCourses(cs); setMembers(ms);
       api(`/notifications`).then(setNotis).catch(() => {});
+      // Mi cuenta de afiliado en esta comunidad
+      if (com.myMembership) {
+        api(`/affiliates/me`).then((d) => {
+          const acc = (d.accounts || []).find((a: any) => a.communityId === com.id);
+          setMyAff(acc ? { code: acc.code, status: acc.status } : null);
+        }).catch(() => {});
+      }
       const isManager = com.myMembership && (com.myMembership.role === "owner" || com.myMembership.role === "admin");
-      if (isManager) setPending(await api(`/admin/payments/pending`).catch(() => []));
+      if (isManager) {
+        setPending(await api(`/admin/payments/pending`).catch(() => []));
+        api(`/communities/${slug}/affiliates`).then(setApplicants).catch(() => {});
+        api(`/communities/${slug}/payouts`).then(setAffPayouts).catch(() => {});
+      }
     } catch (e: any) { flash(e.message, false); }
   }, [slug]);
   useEffect(() => { load(); }, [load]);
+
+  // Capturar ?ref= del link de afiliado
+  useEffect(() => {
+    const r = new URLSearchParams(window.location.search).get("ref");
+    if (r) setRefCode(r);
+  }, []);
 
   // Cargar datos por pestaña
   useEffect(() => {
@@ -103,7 +132,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     } catch (e: any) { flash(e.message, false); }
   };
   const payManual = async () => {
-    try { await api(`/payments/orders/manual`, "POST", { communityId: c.id, proofUrl }); setProofUrl(""); flash("Comprobante enviado. En revisión ✔"); load(); }
+    try { await api(`/payments/orders/manual`, "POST", { communityId: c.id, proofUrl, referralCode: refCode || undefined }); setProofUrl(""); flash("Comprobante enviado. En revisión ✔"); load(); }
     catch (e: any) { flash(e.message, false); }
   };
   const uploadProof = async (file?: File) => {
@@ -122,6 +151,9 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         name: settings.name, description: settings.description,
         priceCents: Math.round(parseFloat(settings.priceUsd || "0") * 100),
         iconUrl: settings.iconUrl || undefined, isPublic: settings.isPublic,
+        affiliateEnabled: settings.affiliateEnabled,
+        affiliateCommissionPct: parseFloat(settings.commissionPct || "0"),
+        payoutTermsDays: settings.payoutTermsDays,
       });
       flash("Comunidad actualizada ✔"); load();
     } catch (e: any) { flash(e.message, false); }
@@ -135,6 +167,19 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     try { await api(`/posts/${postId}/comments`, "POST", { body: commentText }); setCommentText(""); const cs = await api(`/posts/${postId}/comments`); setComments((m) => ({ ...m, [postId]: cs })); }
     catch (e: any) { flash(e.message, false); }
   };
+  const applyAffiliate = async () => {
+    try { const r = await api(`/communities/${c.slug}/affiliates`, "POST"); setMyAff({ code: r.code, status: r.status }); flash(r.status === "approved" ? "Ya eres afiliado ✔" : "Solicitud enviada. El productor debe aprobarte."); }
+    catch (e: any) { flash(e.message, false); }
+  };
+  const reviewApplicant = async (userId: string, decision: "approve" | "reject") => {
+    try { await api(`/communities/${c.slug}/affiliates/${userId}`, "PATCH", { decision }); flash(decision === "approve" ? "Afiliado aprobado ✔" : "Rechazado"); setApplicants(await api(`/communities/${slug}/affiliates`)); }
+    catch (e: any) { flash(e.message, false); }
+  };
+  const reviewPayout = async (id: string, decision: "approve" | "reject") => {
+    try { await api(`/payouts/${id}`, "PATCH", { decision }); flash(decision === "approve" ? "Payout autorizado y pagado ✔" : "Payout rechazado"); setAffPayouts(await api(`/communities/${slug}/payouts`)); }
+    catch (e: any) { flash(e.message, false); }
+  };
+  const affiliateLink = myAff ? `${typeof window !== "undefined" ? window.location.origin : ""}/c/${c.slug}?ref=${myAff.code}` : "";
   const publish = async () => { try { await api(`/communities/${c.slug}/posts`, "POST", { body: postBody }); setPostBody(""); flash("Publicado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
   const like = async (id: string) => { try { await api(`/posts/${id}/like`, "POST"); load(); } catch (e: any) { flash(e.message, false); } };
   const createCourse = async () => { try { await api(`/communities/${c.slug}/courses`, "POST", { title: courseTitle }); setCourseTitle(""); flash("Curso creado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
@@ -213,6 +258,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         <TabBtn id="leaderboard" label="Leaderboards" />
         <TabBtn id="members" label={`Members (${members.length})`} />
         <TabBtn id="about" label="About" />
+        {(c.affiliateEnabled || isManager) && <TabBtn id="affiliates" label="Afiliados" />}
         {isMember && <TabBtn id="chat" label="Chat" />}
         {isManager && <TabBtn id="review" label={`Comprobantes (${pending.length})`} />}
         {isOwner && <TabBtn id="settings" label="Ajustes" />}
@@ -380,8 +426,79 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
             <input type="checkbox" style={{ width: "auto" }} checked={settings.isPublic} onChange={(e) => setSettings({ ...settings, isPublic: e.target.checked })} />
             Pública (aparece en el descubrimiento)
           </label>
+
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+            <h2 style={{ fontSize: 15 }}>Programa de afiliados</h2>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <input type="checkbox" style={{ width: "auto" }} checked={settings.affiliateEnabled} onChange={(e) => setSettings({ ...settings, affiliateEnabled: e.target.checked })} />
+              Habilitar afiliados (miembros pueden promocionar y ganar comisión)
+            </label>
+            <label>Comisión por venta (% del precio)</label>
+            <input value={settings.commissionPct} onChange={(e) => setSettings({ ...settings, commissionPct: e.target.value })} placeholder="Ej: 40" style={{ width: 120 }} />
+            <label>Término de pago (net)</label>
+            <select value={settings.payoutTermsDays} onChange={(e) => setSettings({ ...settings, payoutTermsDays: parseInt(e.target.value, 10) })} style={{ width: 160 }}>
+              <option value={30}>Net 30 días</option>
+              <option value={60}>Net 60 días</option>
+            </select>
+          </div>
           <button onClick={saveSettings} disabled={busy}>Guardar cambios</button>
         </div>
+      )}
+
+      {tab === "affiliates" && (
+        <>
+          {c.affiliateEnabled && (
+            <div className="card">
+              <h2>Programa de afiliados</h2>
+              <div className="muted">Gana <b style={{ color: "var(--gold)" }}>{c.affiliateCommissionPct}%</b> por cada persona que se una con tu link. Pago Net {c.payoutTermsDays} días. Retiras desde <a href="/afiliados">tu panel de afiliado</a>.</div>
+              {!c.myMembership && <div className="muted" style={{ marginTop: 8 }}>Únete a la comunidad para poder ser afiliado.</div>}
+              {c.myMembership && !myAff && <button onClick={applyAffiliate}>Quiero ser afiliado</button>}
+              {myAff && myAff.status === "pending" && <div style={{ marginTop: 10 }} className="pill">Solicitud pendiente de aprobación</div>}
+              {myAff && myAff.status === "rejected" && <div style={{ marginTop: 10 }} className="err">Tu solicitud fue rechazada.</div>}
+              {myAff && myAff.status === "approved" && (
+                <div style={{ marginTop: 10 }}>
+                  <label>Tu link de afiliado</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input readOnly value={affiliateLink} onFocus={(e) => e.target.select()} />
+                    <button style={{ marginTop: 0 }} onClick={() => { navigator.clipboard?.writeText(affiliateLink); flash("Link copiado ✔"); }}>Copiar</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {isManager && (
+            <>
+              <div className="card" style={{ marginTop: 12 }}>
+                <h2>Solicitudes de afiliado</h2>
+                {applicants.length === 0 && <div className="muted">Sin solicitudes.</div>}
+                {applicants.map((a) => (
+                  <div className="row" key={a.userId}>
+                    <div><a href={`/u/${a.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{a.displayName}</a> <span className="pill">{a.status}</span></div>
+                    {a.status === "pending" && (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => reviewApplicant(a.userId, "approve")}>Autorizar</button>
+                        <button className="ghost" style={{ marginTop: 0 }} onClick={() => reviewApplicant(a.userId, "reject")}>Rechazar</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="card" style={{ marginTop: 12 }}>
+                <h2>Solicitudes de payout</h2>
+                {affPayouts.filter((p) => p.status === "requested").length === 0 && <div className="muted">Sin solicitudes de pago.</div>}
+                {affPayouts.filter((p) => p.status === "requested").map((pp) => (
+                  <div className="row" key={pp.id}>
+                    <div>{pp.payeeName} · {money(pp.amountCents, pp.currency)}<div className="muted">{pp.method}</div></div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => reviewPayout(pp.id, "approve")}>Autorizar pago</button>
+                      <button className="ghost" style={{ marginTop: 0 }} onClick={() => reviewPayout(pp.id, "reject")}>Rechazar</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
       )}
 
       {tab === "review" && isManager && (

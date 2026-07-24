@@ -13,6 +13,7 @@ const Body = z.object({
   communityId: z.string().uuid(),
   proofUrl: z.string().url(), // URL del comprobante (subido a Blob/almacenamiento)
   note: z.string().max(300).optional(),
+  referralCode: z.string().max(40).optional(), // F4: link de afiliado usado
 });
 
 /**
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
       reference,
       integrityHash,
       manualProofUrl: parsed.data.proofUrl,
+      referralCode: parsed.data.referralCode,
     })
     .returning();
 

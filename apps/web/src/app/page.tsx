@@ -33,6 +33,8 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [code, setCode] = useState("");
+  const [needs2fa, setNeeds2fa] = useState(false);
 
   // Community form
   const [cName, setCName] = useState("");
@@ -52,8 +54,11 @@ export default function Home() {
     catch (e: any) { flash(e.message, false); }
   };
   const doLogin = async () => {
-    try { await api("/auth/login", "POST", { email, password }); flash("Sesión iniciada ✔"); refresh(); }
-    catch (e: any) { flash(e.message, false); }
+    try {
+      const r = await api("/auth/login", "POST", { email, password, code: code || undefined });
+      if (r?.requires2fa) { setNeeds2fa(true); flash("Ingresa tu código de 2FA"); return; }
+      setNeeds2fa(false); setCode(""); flash("Sesión iniciada ✔"); refresh();
+    } catch (e: any) { flash(e.message, false); }
   };
   const doLogout = async () => { await api("/auth/logout", "POST"); flash("Sesión cerrada"); refresh(); };
 
@@ -108,6 +113,12 @@ export default function Home() {
               <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" />
               <label>Contraseña (mín. 8)</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+              {needs2fa && (
+                <>
+                  <label>Código 2FA (6 dígitos)</label>
+                  <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} />
+                </>
+              )}
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={doRegister}>Registrarme</button>
                 <button className="ghost" onClick={doLogin}>Entrar</button>

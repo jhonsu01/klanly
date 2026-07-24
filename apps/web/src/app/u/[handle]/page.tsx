@@ -17,6 +17,9 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ displayName: "", bio: "", country: "", avatarUrl: "" });
   const [busy, setBusy] = useState(false);
+  const [twoFa, setTwoFa] = useState(false);
+  const [setup, setSetup] = useState<{ secret: string; otpauth: string } | null>(null);
+  const [code, setCode] = useState("");
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -26,7 +29,7 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
       setP(prof);
       setForm({ displayName: prof.displayName, bio: prof.bio || "", country: prof.country || "", avatarUrl: prof.avatarUrl || "" });
     } catch (e: any) { flash(e.message, false); }
-    try { const me = await api(`/auth/me`); setMeHandle(me.handle); } catch { setMeHandle(null); }
+    try { const me = await api(`/auth/me`); setMeHandle(me.handle); setTwoFa(!!me.twoFactorEnabled); } catch { setMeHandle(null); }
   }, [handle]);
   useEffect(() => { load(); }, [load]);
 
@@ -45,6 +48,9 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
       setEdit(false); flash("Perfil actualizado ✔"); load();
     } catch (e: any) { flash(e.message, false); }
   };
+  const start2fa = async () => { try { setSetup(await api(`/auth/2fa/setup`, "POST")); } catch (e: any) { flash(e.message, false); } };
+  const enable2fa = async () => { try { await api(`/auth/2fa/enable`, "POST", { secret: setup!.secret, code }); setSetup(null); setCode(""); setTwoFa(true); flash("2FA activado ✔"); } catch (e: any) { flash(e.message, false); } };
+  const disable2fa = async () => { try { await api(`/auth/2fa/disable`, "POST", { code }); setCode(""); setTwoFa(false); flash("2FA desactivado"); } catch (e: any) { flash(e.message, false); } };
 
   return (
     <div className="container">
@@ -79,6 +85,35 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
               <button onClick={save} disabled={busy}>Guardar</button>
             </div>
           )}
+        </div>
+      )}
+
+      {isMe && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2>Seguridad (2FA)</h2>
+            <span className="pill" style={{ color: twoFa ? "var(--green)" : "var(--muted)" }}>{twoFa ? "Activo" : "Inactivo"}</span>
+          </div>
+          {!twoFa && !setup && <button onClick={start2fa}>Activar 2FA</button>}
+          {!twoFa && setup && (
+            <div style={{ marginTop: 10 }}>
+              <div className="muted">1) En tu app (Google Authenticator / Authy) añade una cuenta manual con esta clave:</div>
+              <code style={{ display: "block", background: "#12121a", padding: "8px 10px", borderRadius: 8, margin: "8px 0", wordBreak: "break-all" }}>{setup.secret}</code>
+              <div className="muted">2) Ingresa el código de 6 dígitos que muestra la app:</div>
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: 140 }} />
+              <div><button onClick={enable2fa} disabled={code.length !== 6}>Confirmar y activar</button></div>
+            </div>
+          )}
+          {twoFa && (
+            <div style={{ marginTop: 10 }}>
+              <div className="muted">Para desactivarlo, ingresa un código actual de tu app:</div>
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: 140 }} />
+              <div><button className="ghost" onClick={disable2fa} disabled={code.length !== 6}>Desactivar 2FA</button></div>
+            </div>
+          )}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+            <a href="/afiliados"><button className="ghost" style={{ marginTop: 0 }}>💰 Mi panel de afiliado</button></a>
+          </div>
         </div>
       )}
 
