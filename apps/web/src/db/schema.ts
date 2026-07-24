@@ -24,6 +24,8 @@ export const users = pgTable("users", {
   country: text("country"),
   // user | producer | admin
   platformRole: text("platform_role").notNull().default("user"),
+  // Estado de aprobación como productor (paga mensual a la plataforma para publicar)
+  producerStatus: text("producer_status").notNull().default("none"), // none|pending|approved|rejected
   totpSecret: text("totp_secret"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -220,7 +222,8 @@ export const payoutMethods = pgTable("payout_methods", {
     .references(() => users.id)
     .unique(),
   type: text("type").notNull(), // nequi | bancolombia | paypal | bank | otro
-  details: text("details").notNull(), // número/correo/cuenta
+  accountName: text("account_name"), // nombre del titular (opcional)
+  details: text("details").notNull(), // número de cuenta / llave / correo
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

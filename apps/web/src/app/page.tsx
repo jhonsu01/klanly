@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Me = { id: string; email: string; displayName: string; handle: string; role: string } | null;
+type Me = { id: string; email: string; displayName: string; handle: string; role: string; producerStatus?: string } | null;
 type Community = {
   id: string;
   slug: string;
@@ -74,6 +74,11 @@ export default function Home() {
     } catch (e: any) { flash(e.message, false); }
   };
 
+  const applyProducer = async () => {
+    try { const r = await api("/producer/apply", "POST", {}); flash(r.status === "approved" ? "Ya eres productor ✔" : "Solicitud enviada. El admin la revisará."); refresh(); }
+    catch (e: any) { flash(e.message, false); }
+  };
+
   const join = async (c: Community) => {
     try {
       const r = await api(`/communities/${c.slug}/join`, "POST");
@@ -132,7 +137,9 @@ export default function Home() {
         {/* Crear comunidad */}
         <div className="card">
           <h2>Crear comunidad</h2>
-          {me ? (
+          {!me ? (
+            <div className="muted">Inicia sesión para crear una comunidad.</div>
+          ) : (me.role === "admin" || me.producerStatus === "approved") ? (
             <>
               <label>Nombre</label>
               <input value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Mi Comunidad" />
@@ -140,10 +147,16 @@ export default function Home() {
               <textarea value={cDesc} onChange={(e) => setCDesc(e.target.value)} rows={2} placeholder="De qué trata…" />
               <label>Precio mensual (USD, 0 = gratis)</label>
               <input value={cPrice} onChange={(e) => setCPrice(e.target.value)} placeholder="0" />
-              <button onClick={createCommunity} disabled={!cName}>Crear (me vuelve productor)</button>
+              <button onClick={createCommunity} disabled={!cName}>Crear comunidad</button>
             </>
+          ) : me.producerStatus === "pending" ? (
+            <div className="muted">Tu solicitud para ser <b>productor</b> está pendiente de aprobación del administrador.</div>
           ) : (
-            <div className="muted">Inicia sesión para crear una comunidad.</div>
+            <>
+              <div className="muted">Para publicar comunidades necesitas ser <b>productor aprobado</b> (suscripción mensual a la plataforma). El administrador revisa tu solicitud.</div>
+              <button onClick={applyProducer}>Quiero ser productor</button>
+              {me.producerStatus === "rejected" && <div className="out err" style={{ marginTop: 8 }}>Tu solicitud anterior fue rechazada.</div>}
+            </>
           )}
         </div>
       </div>

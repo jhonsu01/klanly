@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       amountCents: total,
       currency,
       kind: "affiliate",
-      method: `${pm.type}: ${pm.details}`,
+      method: `${pm.type}${pm.accountName ? ` · ${pm.accountName}` : ""} · ${pm.details}`,
       status: "requested",
     })
     .returning();

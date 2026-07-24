@@ -17,6 +17,7 @@ export async function GET() {
     displayName: u.displayName,
     handle: u.handle,
     role: u.platformRole,
+    producerStatus: u.producerStatus,
     avatarUrl: u.avatarUrl,
     bio: u.bio,
     country: u.country,

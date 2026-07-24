@@ -42,7 +42,7 @@ export async function GET() {
   return ok({
     accounts: accounts.map((a) => ({ ...a, commissionPct: Number(a.commissionPct) })),
     balance: { pendingCents: pending, availableCents: available, requestedCents: requested, paidCents: paid },
-    payoutMethod: pm ? { type: pm.type, details: pm.details } : null,
+    payoutMethod: pm ? { type: pm.type, accountName: pm.accountName, details: pm.details } : null,
     recent: rows
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 20)

@@ -98,7 +98,7 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
           {!twoFa && setup && (
             <div style={{ marginTop: 10 }}>
               <div className="muted">1) En tu app (Google Authenticator / Authy) añade una cuenta manual con esta clave:</div>
-              <code style={{ display: "block", background: "#12121a", padding: "8px 10px", borderRadius: 8, margin: "8px 0", wordBreak: "break-all" }}>{setup.secret}</code>
+              <code style={{ display: "block", background: "var(--input)", padding: "8px 10px", borderRadius: 8, margin: "8px 0", wordBreak: "break-all" }}>{setup.secret}</code>
               <div className="muted">2) Ingresa el código de 6 dígitos que muestra la app:</div>
               <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: 140 }} />
               <div><button onClick={enable2fa} disabled={code.length !== 6}>Confirmar y activar</button></div>

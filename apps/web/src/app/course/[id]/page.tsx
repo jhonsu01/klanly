@@ -112,7 +112,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         {d.course.coverUrl && <img src={d.course.coverUrl} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 12, marginBottom: 12 }} />}
         <h1>{d.course.title}</h1>
         {d.course.description && <p className="muted" style={{ marginTop: 4 }}>{d.course.description}</p>}
-        <div style={{ marginTop: 12, background: "#20202a", borderRadius: 999, height: 10, overflow: "hidden" }}>
+        <div style={{ marginTop: 12, background: "var(--chip)", borderRadius: 999, height: 10, overflow: "hidden" }}>
           <div style={{ width: `${d.progressPct}%`, height: "100%", background: "linear-gradient(90deg,var(--accent),var(--accent2))" }} />
         </div>
         <div className="muted" style={{ marginTop: 4 }}>{d.progressPct}% completado · {d.lessons.length} lecciones</div>
@@ -164,7 +164,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             <div key={mod.name} style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 12, textTransform: "uppercase", color: "var(--muted)", letterSpacing: ".5px", margin: "6px 0" }}>{mod.name}</div>
               {mod.items.map((l) => (
-                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", borderRadius: 8, cursor: l.locked ? "not-allowed" : "pointer", background: sel === l.id ? "#24242f" : "transparent", opacity: l.locked ? 0.5 : 1, fontSize: 14 }}>
+                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", borderRadius: 8, cursor: l.locked ? "not-allowed" : "pointer", background: sel === l.id ? "var(--surface2)" : "transparent", opacity: l.locked ? 0.5 : 1, fontSize: 14 }}>
                   <span onClick={() => !l.locked && setSel(l.id)} style={{ flex: 1 }}>{l.completed ? "✅ " : l.locked ? "🔒 " : "▶️ "}{l.title}</span>
                   {d.isManager && (
                     <span style={{ display: "flex", gap: 4, fontSize: 12 }}>
@@ -211,7 +211,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                     <a href={video.href} target="_blank" rel="noreferrer"><button className="ghost">Abrir recurso ↗</button></a>
                   ) : <div className="muted">Esta lección no tiene video.</div>}
                   {current.content && <p style={{ marginTop: 14, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{current.content}</p>}
-                  {d.isMember && <button onClick={() => complete(current.id)} disabled={current.completed} style={{ background: current.completed ? "#24242f" : undefined }}>{current.completed ? "✅ Completada" : "Marcar como completada"}</button>}
+                  {d.isMember && <button onClick={() => complete(current.id)} disabled={current.completed} style={{ background: current.completed ? "var(--surface2)" : undefined }}>{current.completed ? "✅ Completada" : "Marcar como completada"}</button>}
                 </div>
               )}
             </>

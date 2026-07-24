@@ -15,11 +15,14 @@ type Data = {
 export default function AffiliatesPage() {
   const [d, setD] = useState<Data | null>(null);
   const [msg, setMsg] = useState<{ t: string; ok: boolean } | null>(null);
-  const [pm, setPm] = useState({ type: "nequi", details: "" });
+  const [pm, setPm] = useState({ type: "nequi", accountName: "", details: "" });
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
   const load = useCallback(async () => {
-    try { const data: Data = await api(`/affiliates/me`); setD(data); if (data.payoutMethod) setPm(data.payoutMethod); }
+    try {
+      const data: Data = await api(`/affiliates/me`); setD(data);
+      if (data.payoutMethod) setPm({ type: data.payoutMethod.type, accountName: (data.payoutMethod as any).accountName || "", details: data.payoutMethod.details });
+    }
     catch (e: any) { flash(e.message, false); }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -51,13 +54,16 @@ export default function AffiliatesPage() {
         <label>Tipo</label>
         <select value={pm.type} onChange={(e) => setPm({ ...pm, type: e.target.value })}>
           <option value="nequi">Nequi</option>
+          <option value="daviplata">Daviplata</option>
           <option value="bancolombia">Bancolombia</option>
-          <option value="paypal">PayPal</option>
           <option value="bank">Cuenta bancaria</option>
+          <option value="paypal">PayPal</option>
           <option value="otro">Otro</option>
         </select>
-        <label>Datos (número, correo o cuenta)</label>
-        <input value={pm.details} onChange={(e) => setPm({ ...pm, details: e.target.value })} placeholder="Ej: 300 123 4567 / correo@…" />
+        <label>Nombre del titular (opcional)</label>
+        <input value={pm.accountName} onChange={(e) => setPm({ ...pm, accountName: e.target.value })} placeholder="Ej: Jhon Supelano" />
+        <label>Número de cuenta o llave</label>
+        <input value={pm.details} onChange={(e) => setPm({ ...pm, details: e.target.value })} placeholder="Ej: 300 123 4567 / correo@… / nº cuenta" />
         <button onClick={savePm} disabled={!pm.details}>Guardar medio de pago</button>
       </div>
 

@@ -41,6 +41,11 @@ export async function POST(req: Request) {
   const me = await currentUser();
   if (!me) return fail("No autenticado", 401);
 
+  // Solo productores aprobados (o el admin) pueden publicar comunidades
+  if (me.platformRole !== "admin" && me.producerStatus !== "approved") {
+    return fail("Debes ser productor aprobado para publicar. Aplica desde tu cuenta.", 403, { needsProducer: true, producerStatus: me.producerStatus });
+  }
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Datos inválidos", 422, { issues: parsed.error.issues });
   const b = parsed.data;
