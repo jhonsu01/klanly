@@ -2,7 +2,7 @@
 
 # Klanly
 
-**Plataforma de comunidades de pago de comunidades de pago** — con apps instalables (`.msi` Windows + `.apk` Android), app web en Vercel y cobros duales (pasarela + comprobante manual).
+**Plataforma de comunidades de pago** — con apps instalables (`.msi` Windows + `.apk` Android), app web en Vercel y cobros duales (pasarela + comprobante manual).
 
 [![Release](https://github.com/jhonsu01/klanly/actions/workflows/release.yml/badge.svg)](https://github.com/jhonsu01/klanly/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/jhonsu01/klanly?display_name=tag)](https://github.com/jhonsu01/klanly/releases/latest)
@@ -39,6 +39,7 @@ Los binarios se compilan automáticamente con GitHub Actions y se publican en **
 ```
 klanly/
 ├── apps/
+│   ├── web/             # Next.js -> Vercel (web + API: auth, comunidades, pagos)
 │   ├── admin-windows/   # Tauri v2 -> .msi (panel de escritorio del admin)
 │   └── android/         # App Android (Kotlin + WebView) -> .apk
 ├── scripts/
@@ -51,8 +52,9 @@ klanly/
 └── VERSION
 ```
 
-> El backend (Node + PostgreSQL), la web (Next.js → Vercel) y las apps de productor
-> se añaden por fases según [`docs/guia.md`](docs/guia.md).
+> **Fase F0/F1 lista** en `apps/web`: registro/login (JWT), gestión de comunidades y
+> usuarios, y módulo de pagos (Wompi + comprobante manual + webhook). Ver
+> [`apps/web/README.md`](apps/web/README.md). Faltan Classroom, gamificación y apps de productor.
 
 ---
 

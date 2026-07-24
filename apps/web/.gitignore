@@ -1,0 +1,18 @@
+# Next.js
+/.next/
+/out/
+next-env.d.ts.timestamp
+
+# deps
+/node_modules
+
+# drizzle (migraciones generadas se pueden versionar; el meta local no)
+/drizzle/meta
+
+# env
+.env
+.env*.local
+
+# vercel
+.vercel
+*.tsbuildinfo
