@@ -256,6 +256,85 @@ export const lessonProgress = pgTable(
   }),
 );
 
+// ===================== F3: LEADERBOARDS / EVENTOS / NOTIS / CHAT =====================
+
+// Ledger de puntos: permite calcular leaderboards por ventana (7d/30d/all-time)
+export const pointEvents = pgTable(
+  "point_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    delta: integer("delta").notNull(),
+    reason: text("reason"), // like | lesson_complete | ...
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    lbIdx: index("point_events_community_created_idx").on(t.communityId, t.createdAt),
+  }),
+);
+
+export const events = pgTable(
+  "events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    title: text("title").notNull(),
+    description: text("description"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    linkUrl: text("link_url"),
+    kind: text("kind").notNull().default("meet"), // meet | link
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    calIdx: index("events_community_start_idx").on(t.communityId, t.startsAt),
+  }),
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    communityId: uuid("community_id").references(() => communities.id),
+    type: text("type").notNull(), // payment_approved | level_up | new_post | ...
+    body: text("body").notNull(),
+    read: boolean("read").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdx: index("notifications_user_idx").on(t.userId, t.read),
+  }),
+);
+
+// Chat de comunidad (MVP por sondeo/polling; realtime se añade con proveedor externo)
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    chatIdx: index("messages_community_created_idx").on(t.communityId, t.createdAt),
+  }),
+);
+
 // ===================== AUDITORIA =====================
 export const auditLog = pgTable("audit_log", {
   id: bigserial("id", { mode: "number" }).primaryKey(),

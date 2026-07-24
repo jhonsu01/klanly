@@ -29,7 +29,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     .where(eq(posts.id, post.id));
 
   // +1 punto al autor del post
-  const g = await awardPoints(post.communityId, post.authorId, 1);
+  const g = await awardPoints(post.communityId, post.authorId, 1, "like");
 
   return ok({ liked: true, authorLevel: g?.level ?? null, leveledUp: g?.leveledUp ?? false });
 }

@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { memberships } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { memberships, pointEvents, notifications } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 
 // Umbrales de puntos acumulados para alcanzar cada nivel (1..9), estilo Skool.
 export const LEVEL_THRESHOLDS = [0, 5, 20, 65, 155, 515, 2015, 8015, 33015];
@@ -20,10 +20,15 @@ export function pointsToNextLevel(points: number): number | null {
 }
 
 /**
- * Suma puntos a un miembro y recalcula su nivel.
- * Devuelve el nuevo total de puntos y nivel (o null si no es miembro).
+ * Suma puntos a un miembro, registra el evento en el ledger (para leaderboards
+ * por ventana) y recalcula el nivel. Si sube de nivel, crea una notificación.
  */
-export async function awardPoints(communityId: string, userId: string, delta: number) {
+export async function awardPoints(
+  communityId: string,
+  userId: string,
+  delta: number,
+  reason = "activity",
+) {
   const [m] = await db
     .select()
     .from(memberships)
@@ -33,10 +38,23 @@ export async function awardPoints(communityId: string, userId: string, delta: nu
 
   const newPoints = Math.max(0, m.points + delta);
   const newLevel = levelForPoints(newPoints);
+
   await db
     .update(memberships)
     .set({ points: newPoints, level: newLevel })
     .where(eq(memberships.id, m.id));
 
-  return { points: newPoints, level: newLevel, leveledUp: newLevel > m.level };
+  await db.insert(pointEvents).values({ communityId, userId, delta, reason });
+
+  const leveledUp = newLevel > m.level;
+  if (leveledUp) {
+    await db.insert(notifications).values({
+      userId,
+      communityId,
+      type: "level_up",
+      body: `¡Subiste al nivel ${newLevel}! 🎉`,
+    });
+  }
+
+  return { points: newPoints, level: newLevel, leveledUp };
 }

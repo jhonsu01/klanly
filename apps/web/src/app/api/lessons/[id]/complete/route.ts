@@ -57,6 +57,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
     });
   }
 
-  const g = await awardPoints(course.communityId, me.id, 2);
+  const g = await awardPoints(course.communityId, me.id, 2, "lesson_complete");
   return ok({ completed: true, points: g?.points ?? null, level: g?.level ?? null, leveledUp: g?.leveledUp ?? false });
 }

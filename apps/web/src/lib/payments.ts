@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { paymentOrders, memberships, subscriptions, communities, auditLog } from "@/db/schema";
+import { paymentOrders, memberships, subscriptions, communities, auditLog, notifications } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 
 /**
@@ -58,6 +58,13 @@ export async function activateOrderPaid(orderId: string, actorId?: string) {
     entity: "payment_orders",
     entityId: order.id,
     metadata: { method: order.method, amountCents: order.amountCents },
+  });
+
+  await db.insert(notifications).values({
+    userId: order.userId,
+    communityId: order.communityId,
+    type: "payment_approved",
+    body: c ? `Tu pago fue aprobado. Ya tienes acceso a ${c.name}.` : "Tu pago fue aprobado.",
   });
 
   return { ok: true as const };
