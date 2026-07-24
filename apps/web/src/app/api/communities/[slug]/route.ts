@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { communities, memberships } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { ok, fail } from "@/lib/http";
+import { currentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,18 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     .from(memberships)
     .where(eq(memberships.communityId, c.id));
 
+  // Membresía del usuario actual (si está autenticado)
+  let myMembership: { role: string; status: string; level: number; points: number } | null = null;
+  const me = await currentUser();
+  if (me) {
+    const [m] = await db
+      .select()
+      .from(memberships)
+      .where(and(eq(memberships.communityId, c.id), eq(memberships.userId, me.id)))
+      .limit(1);
+    if (m) myMembership = { role: m.role, status: m.status, level: m.level, points: m.points };
+  }
+
   return ok({
     id: c.id,
     slug: c.slug,
@@ -25,5 +38,6 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     currency: c.currency,
     billingPeriod: c.billingPeriod,
     memberCount: count,
+    myMembership,
   });
 }

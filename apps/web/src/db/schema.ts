@@ -181,6 +181,81 @@ export const posts = pgTable(
   }),
 );
 
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id),
+    body: text("body").notNull(),
+    parentId: uuid("parent_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    postIdx: index("comments_post_idx").on(t.postId),
+  }),
+);
+
+// ===================== CLASSROOM =====================
+export const courses = pgTable(
+  "courses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    title: text("title").notNull(),
+    coverUrl: text("cover_url"),
+    description: text("description"),
+    minLevel: integer("min_level").notNull().default(1), // bloqueo por nivel
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    comIdx: index("courses_community_idx").on(t.communityId),
+  }),
+);
+
+export const lessons = pgTable(
+  "lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id),
+    moduleName: text("module_name"),
+    title: text("title").notNull(),
+    videoUrl: text("video_url"),
+    content: text("content"),
+    minLevel: integer("min_level").notNull().default(1),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => ({
+    courseIdx: index("lessons_course_idx").on(t.courseId),
+  }),
+);
+
+export const lessonProgress = pgTable(
+  "lesson_progress",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    lessonId: uuid("lesson_id")
+      .notNull()
+      .references(() => lessons.id),
+    completed: boolean("completed").notNull().default(false),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    pk: uniqueIndex("lesson_progress_pk").on(t.userId, t.lessonId),
+  }),
+);
+
 // ===================== AUDITORIA =====================
 export const auditLog = pgTable("audit_log", {
   id: bigserial("id", { mode: "number" }).primaryKey(),

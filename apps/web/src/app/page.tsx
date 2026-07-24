@@ -137,12 +137,12 @@ export default function Home() {
         {communities.map((c) => (
           <div className="row" key={c.id}>
             <div>
-              <div style={{ fontSize: 15 }}>{c.name}</div>
+              <a href={`/c/${c.slug}`} style={{ fontSize: 15, textDecoration: "none", color: "var(--text)" }}>{c.name}</a>
               <div className="muted">
                 {c.priceCents === 0 ? "Free" : `$${(c.priceCents / 100).toFixed(2)}/${c.billingPeriod}`} · /{c.slug}
               </div>
             </div>
-            {me && <button className="ghost" onClick={() => join(c)}>Unirme</button>}
+            <a href={`/c/${c.slug}`}><button className="ghost" style={{ marginTop: 0 }}>Abrir →</button></a>
           </div>
         ))}
       </div>
