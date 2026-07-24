@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "klanly-admin"
 version = "0.3.0"
 description = "Klanly Admin Desktop"
