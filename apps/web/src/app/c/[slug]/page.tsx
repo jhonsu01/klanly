@@ -21,7 +21,12 @@ type Ev = { id: string; title: string; description?: string; startsAt: string; l
 type Msg = { id: string; body: string; authorName: string; createdAt: string };
 type Noti = { id: string; body: string; type: string; read: boolean; createdAt: string };
 
-type Tab = "community" | "classroom" | "calendar" | "leaderboard" | "members" | "chat" | "about" | "affiliates" | "settings" | "review";
+type Tab = "community" | "classroom" | "calendar" | "leaderboard" | "members" | "chat" | "about" | "affiliates" | "income" | "settings" | "review";
+type Income = {
+  currency: string; revenueCents: number; paidCount: number; activeMembers: number;
+  commissionsOwedCents: number; commissionsPaidCents: number; pendingPayoutsCents: number;
+  recent: { amountCents: number; currency: string; method: string; paidAt?: string; userEmail: string }[];
+};
 
 export default function CommunityPage({ params }: { params: { slug: string } }) {
   const slug = params.slug;
@@ -54,6 +59,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [affPayouts, setAffPayouts] = useState<AffPayout[]>([]);
   const [myAff, setMyAff] = useState<{ code: string; status: string } | null>(null);
   const [refCode, setRefCode] = useState<string | null>(null);
+  const [income, setIncome] = useState<Income | null>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -103,6 +109,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     if (tab === "leaderboard") api(`/communities/${slug}/leaderboard?range=${lbRange}`).then((d) => setLb(d.entries)).catch(() => {});
     if (tab === "calendar") api(`/communities/${slug}/events`).then(setEvs).catch(() => {});
     if (tab === "chat") api(`/communities/${slug}/messages`).then(setMessages).catch(() => {});
+    if (tab === "income") api(`/communities/${slug}/income`).then(setIncome).catch(() => {});
   }, [tab, lbRange, c, slug]);
 
   // Polling del chat
@@ -260,6 +267,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         <TabBtn id="about" label="About" />
         {(c.affiliateEnabled || isManager) && <TabBtn id="affiliates" label="Afiliados" />}
         {isMember && <TabBtn id="chat" label="Chat" />}
+        {isManager && <TabBtn id="income" label="Ingresos" />}
         {isManager && <TabBtn id="review" label={`Comprobantes (${pending.length})`} />}
         {isOwner && <TabBtn id="settings" label="Ajustes" />}
       </div>
@@ -498,6 +506,27 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
               </div>
             </>
           )}
+        </>
+      )}
+
+      {tab === "income" && isManager && income && (
+        <>
+          <div className="grid">
+            <div className="card"><div className="muted">Ingresos totales</div><div style={{ fontSize: 28, fontWeight: 700, color: "var(--green)" }}>{money(income.revenueCents, income.currency)}</div><div className="muted">{income.paidCount} pagos</div></div>
+            <div className="card"><div className="muted">Miembros activos</div><div style={{ fontSize: 28, fontWeight: 700 }}>{income.activeMembers}</div></div>
+            <div className="card"><div className="muted">Comisiones por pagar</div><div style={{ fontSize: 22, fontWeight: 700, color: "var(--gold)" }}>{money(income.commissionsOwedCents, income.currency)}</div></div>
+            <div className="card"><div className="muted">Payouts solicitados</div><div style={{ fontSize: 22, fontWeight: 700 }}>{money(income.pendingPayoutsCents, income.currency)}</div></div>
+          </div>
+          <div className="card" style={{ marginTop: 16 }}>
+            <h2>Pagos recientes</h2>
+            {income.recent.length === 0 && <div className="muted">Sin pagos aún.</div>}
+            {income.recent.map((r, i) => (
+              <div className="row" key={i}>
+                <div>{r.userEmail}<div className="muted">{r.method} · {r.paidAt ? new Date(r.paidAt).toLocaleDateString() : ""}</div></div>
+                <div>{money(r.amountCents, r.currency)}</div>
+              </div>
+            ))}
+          </div>
         </>
       )}
 

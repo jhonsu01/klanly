@@ -100,8 +100,10 @@ export default function Home() {
                 <a href={`/u/${me.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{me.displayName}</a> <span className="pill">{me.role}</span>
               </div>
               <div className="muted">{me.email} · @{me.handle}</div>
-              <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <a href={`/u/${me.handle}`}><button className="ghost">Mi perfil</button></a>
+                <a href="/pagos"><button className="ghost">Mis pagos</button></a>
+                <a href="/afiliados"><button className="ghost">Afiliados</button></a>
                 <button className="ghost" onClick={doLogout}>Cerrar sesión</button>
               </div>
             </>
