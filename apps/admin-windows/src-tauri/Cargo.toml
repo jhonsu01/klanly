@@ -1,6 +1,6 @@
-[package]
+﻿[package]
 name = "klanly-admin"
-version = "0.2.0"
+version = "0.3.0"
 description = "Klanly Admin Desktop"
 authors = ["jhonsu01"]
 edition = "2021"
@@ -20,3 +20,4 @@ codegen-units = 1
 lto = true
 opt-level = "s"
 strip = true
+

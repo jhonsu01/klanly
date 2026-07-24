@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
@@ -11,8 +11,8 @@ android {
         applicationId = "com.klanly.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
 
     buildTypes {
@@ -38,3 +38,4 @@ android {
 dependencies {
     // App liviana basada en WebView (sin AndroidX extra) para un APK pequeno y confiable.
 }
+
