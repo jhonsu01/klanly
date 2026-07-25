@@ -53,7 +53,7 @@ export default function AdminPage() {
 
   if (!ready) return <div className="container"><p className="muted">Cargando…</p></div>;
   if (!me) return <div className="container"><div className="brand"><div className="logo">K</div><h1>Klanly Admin</h1></div><div className="card" style={{ marginTop: 16 }}><div className="muted">Inicia sesión con tu cuenta de administrador.</div><a href="/"><button style={{ marginTop: 10 }}>Ir a iniciar sesión</button></a></div></div>;
-  if (me.role !== "admin") return <div className="container"><div className="card" style={{ marginTop: 16 }}><div className="err">Acceso restringido: solo el super administrador.</div><a href="/" className="muted">← Volver</a></div></div>;
+  if (me.role !== "admin") return <div className="container"><div className="card" style={{ marginTop: 16 }}><div className="err">Acceso restringido: solo el super administrador.</div><a href="/"><button className="ghost" style={{ marginTop: 12 }}>← Volver al inicio</button></a></div></div>;
 
   const reviewProducer = async (id: string, d: "approve" | "reject") => { try { await api(`/admin/producers/${id}`, "PATCH", { decision: d }); flash(d === "approve" ? "Productor aprobado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };
   const reviewProof = async (id: string, d: "approve" | "reject") => { try { await api(`/payments/orders/${id}/review`, "POST", { decision: d }); flash(d === "approve" ? "Aprobado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };

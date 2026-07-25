@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, money, askStepUp } from "@/lib/api-client";
+import TopBar from "@/components/TopBar";
 
 type Account = { communityId: string; slug: string; name: string; code: string; status: string; commissionPct: number; payoutTermsDays: number };
 type Balance = { pendingCents: number; availableCents: number; requestedCents: number; paidCents: number };
@@ -27,7 +28,7 @@ export default function AffiliatesPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (!d) return <div className="container"><a href="/" className="muted">← Volver</a><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
+  if (!d) return <div className="container"><TopBar backHref="/" backLabel="Inicio" title="Afiliados" /><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
 
   const savePm = async () => {
     try {
@@ -46,7 +47,7 @@ export default function AffiliatesPage() {
 
   return (
     <div className="container">
-      <a href="/" className="muted">← Volver</a>
+      <TopBar backHref="/" backLabel="Inicio" title="Afiliados" />
       <div className="brand" style={{ marginTop: 12 }}><div className="logo">$</div><div><h1>Afiliados</h1><div className="muted">Tus comisiones y liquidaciones</div></div></div>
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 

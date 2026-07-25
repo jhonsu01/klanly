@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, money } from "@/lib/api-client";
+import TopBar from "@/components/TopBar";
 
 type Row = {
   id: string; amountCents: number; currency: string; method: string; status: string;
@@ -20,7 +21,7 @@ export default function PaymentsPage() {
 
   return (
     <div className="container">
-      <a href="/" className="muted">← Volver</a>
+      <TopBar backHref="/" backLabel="Inicio" title="Mis pagos" />
       <div className="brand" style={{ marginTop: 12 }}><div className="logo">🧾</div><div><h1>Historial de pagos</h1><div className="muted">Tus membresías y comprobantes</div></div></div>
       {err && <div className="out err">{err}</div>}
       <div className="card" style={{ marginTop: 16 }}>

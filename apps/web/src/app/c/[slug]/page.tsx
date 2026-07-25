@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, money, uploadFile, askStepUp } from "@/lib/api-client";
 import FilePicker from "@/components/FilePicker";
 import ImageViewer from "@/components/ImageViewer";
+import TopBar from "@/components/TopBar";
 import { getPusherClient, realtimeEnabled } from "@/lib/pusher-client";
 
 type Membership = { role: string; status: string; level: number; points: number; accessUntil?: string | null } | null;
@@ -261,10 +262,17 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <a href="/" className="muted">← Todas las comunidades</a>
-        <button className="ghost" style={{ marginTop: 0 }} onClick={openNotis}>🔔 {notis.unread > 0 ? notis.unread : ""}</button>
-      </div>
+      <TopBar
+        backHref="/"
+        backLabel="Comunidades"
+        title={c.name}
+        right={
+          <button className="icon-btn" onClick={openNotis} title="Notificaciones" aria-label="Notificaciones">
+            🔔
+            {notis.unread > 0 && <span className="badge">{notis.unread > 9 ? "9+" : notis.unread}</span>}
+          </button>
+        }
+      />
       {showNotis && (
         <div className="card" style={{ marginTop: 8 }}>
           <h2>Notificaciones</h2>

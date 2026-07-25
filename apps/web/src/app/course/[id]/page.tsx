@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, uploadFile } from "@/lib/api-client";
 import FilePicker from "@/components/FilePicker";
+import TopBar from "@/components/TopBar";
 import { parseVideo } from "@/lib/video";
 
 type Lesson = {
@@ -58,7 +59,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
     return out;
   }, [d]);
 
-  if (!d) return <div className="container"><a href="/" className="muted">← Volver</a><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
+  if (!d) return <div className="container"><TopBar backHref="/" /><p className="muted">Cargando…</p></div>;
 
   const current = d.lessons.find((l) => l.id === sel) || null;
   const video = parseVideo(current?.videoUrl);
@@ -111,7 +112,11 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
   return (
     <div className="container">
-      {d.community ? <a href={`/c/${d.community.slug}`} className="muted">← {d.community.name}</a> : <a href="/" className="muted">← Volver</a>}
+      <TopBar
+        backHref={d.community ? `/c/${d.community.slug}` : "/"}
+        backLabel={d.community ? d.community.name : "Volver"}
+        title={d.course.title}
+      />
 
       <div style={{ marginTop: 12 }}>
         {d.course.coverUrl && <img src={d.course.coverUrl} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 12, marginBottom: 12 }} />}

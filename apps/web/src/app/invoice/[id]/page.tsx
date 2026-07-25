@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, money } from "@/lib/api-client";
+import TopBar from "@/components/TopBar";
 
 type Invoice = {
   invoiceNumber: string; status: string; createdAt: string; paidAt?: string | null;
@@ -17,13 +18,13 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
 
   useEffect(() => { api(`/payments/orders/${params.id}`).then(setInv).catch((e) => setErr(e.message)); }, [params.id]);
 
-  if (err) return <div className="container"><a href="/pagos" className="muted">← Historial</a><div className="out err" style={{ marginTop: 16 }}>{err}</div></div>;
+  if (err) return <div className="container"><TopBar backHref="/pagos" backLabel="Historial" /><div className="out err" style={{ marginTop: 16 }}>{err}</div></div>;
   if (!inv) return <div className="container"><p className="muted">Cargando…</p></div>;
 
   return (
     <div className="container" style={{ maxWidth: 720 }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <a href="/pagos" className="muted">← Historial</a>
+        <TopBar backHref="/pagos" backLabel="Historial" title="Factura" />
         <button className="ghost" style={{ marginTop: 0 }} onClick={() => window.print()}>Imprimir / PDF</button>
       </div>
       <div className="card" style={{ marginTop: 16 }}>

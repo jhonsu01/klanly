@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, uploadFile } from "@/lib/api-client";
 import FilePicker from "@/components/FilePicker";
+import TopBar from "@/components/TopBar";
 
 type Com = { slug: string; name: string; role: string; level: number; points: number };
 type Profile = {
@@ -34,7 +35,7 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
   }, [handle]);
   useEffect(() => { load(); }, [load]);
 
-  if (!p) return <div className="container"><a href="/" className="muted">← Volver</a><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
+  if (!p) return <div className="container"><TopBar backHref="/" /><p className="muted">Cargando…</p></div>;
 
   const isMe = meHandle === p.handle;
 
@@ -55,7 +56,7 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
 
   return (
     <div className="container">
-      <a href="/" className="muted">← Todas las comunidades</a>
+      <TopBar backHref="/" backLabel="Comunidades" />
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
       <div className="brand" style={{ marginTop: 12, alignItems: "flex-start" }}>
