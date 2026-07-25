@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const code = await issueCode(me.id, "verify_email", 30);
   await sendEmail(me.email, "Verifica tu cuenta en Klanly", emailTemplate(
     "Verifica tu cuenta",
-    `Tu código de verificación es: <b style="font-size:22px;letter-spacing:3px">${code}</b><br/>Vence en 30 minutos.`,
+    `Tu código de verificación es: <b style="font-size:22px;letter-spacing:3px">${code}</b><br/>Vence en 30 minutos.<br/><br/>Si este mensaje llegó a tu carpeta de Spam, márcalo como <b>“No es spam”</b> para recibir los próximos avisos en tu bandeja de entrada.`,
   ));
   return ok({ sent: true });
 }

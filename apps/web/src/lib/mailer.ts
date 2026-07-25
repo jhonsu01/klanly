@@ -15,12 +15,32 @@ function getTransport(): Transporter | null {
   return transporter;
 }
 
+/** Versión en texto plano del HTML (los correos solo-HTML puntúan peor en spam). */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h\d|tr)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 /** Envía un email (Gmail SMTP). Si no hay credenciales, no hace nada (graceful). */
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   const t = getTransport();
   if (!t) return false;
   try {
-    await t.sendMail({ from: `Klanly <${process.env.GMAIL_USER}>`, to, subject, html });
+    await t.sendMail({
+      from: `Klanly <${process.env.GMAIL_USER}>`,
+      to,
+      subject,
+      html,
+      text: htmlToText(html), // alternativa en texto: mejora la entregabilidad
+      replyTo: process.env.GMAIL_USER,
+    });
     return true;
   } catch (e) {
     console.error("[mailer] error enviando email:", e);

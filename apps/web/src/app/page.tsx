@@ -64,7 +64,7 @@ export default function Home() {
   };
 
   const doRegister = async () => {
-    try { await api("/auth/register", "POST", { email, password, displayName }); flash("Cuenta creada ✔"); refresh(); }
+    try { await api("/auth/register", "POST", { email, password, displayName }); flash("Cuenta creada ✔ Te enviamos un código a tu correo. Si no lo ves, revisa la carpeta de SPAM o correo no deseado."); refresh(); }
     catch (e: any) { flash(e.message, false); }
   };
   const doLogin = async () => {
@@ -98,7 +98,7 @@ export default function Home() {
     catch (e: any) { flash(e.message, false); }
   };
   const resendVerify = async () => {
-    try { await api("/auth/resend-verification", "POST"); flash("Código reenviado a tu correo ✔"); }
+    try { await api("/auth/resend-verification", "POST"); flash("Código reenviado ✔ Revisa también la carpeta de SPAM."); }
     catch (e: any) { flash(e.message, false); }
   };
 
@@ -121,6 +121,9 @@ export default function Home() {
         <div className="card" style={{ marginTop: 16, borderColor: "var(--gold)" }}>
           <h2>✉️ Verifica tu correo</h2>
           <div className="muted">Te enviamos un código de 6 dígitos a <b>{me.email}</b>. Ingrésalo para activar tu cuenta (necesario para unirte, pagar o crear comunidades).</div>
+          <div className="muted" style={{ marginTop: 6, color: "var(--gold)" }}>
+            📬 ¿No te llegó? <b>Revisa la carpeta de Spam o correo no deseado</b> y marca el mensaje como “No es spam” para recibir los próximos avisos en tu bandeja.
+          </div>
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             <input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: 140 }} />
             <button style={{ marginTop: 0 }} onClick={verifyEmail} disabled={verifyCode.length !== 6}>Verificar</button>
@@ -164,6 +167,10 @@ export default function Home() {
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={doRegister}>Registrarme</button>
                 <button className="ghost" onClick={doLogin}>Entrar</button>
+              </div>
+              <div className="muted" style={{ marginTop: 10 }}>
+                Al registrarte te enviamos un código de 6 dígitos para activar tu cuenta.
+                Si no lo encuentras, <b>revisa la carpeta de Spam</b> o correo no deseado.
               </div>
             </>
           )}
