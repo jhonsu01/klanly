@@ -103,9 +103,9 @@ export default function AdminPage() {
           <Item id="audit" icon="🔎" label="Auditoría" />
           <Item id="settings" icon="⚙️" label="Ajustes" />
         </nav>
-        <div style={{ marginTop: 24, padding: "0 6px", textAlign: "center" }}>
-          <a href="https://ko-fi.com/V7V81LV7GX" target="_blank" rel="noreferrer">
-            <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Apóyame en Ko-fi" style={{ height: 32 }} />
+        <div style={{ marginTop: 24, padding: "0 10px", textAlign: "center", overflow: "hidden" }}>
+          <a href="https://ko-fi.com/V7V81LV7GX" target="_blank" rel="noreferrer" style={{ display: "block" }}>
+            <img className="kofi" src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Apóyame en Ko-fi" />
           </a>
         </div>
       </aside>
@@ -118,7 +118,7 @@ export default function AdminPage() {
           </div>
           <button className="ghost" style={{ marginTop: 0 }} onClick={refresh}>↻ Actualizar</button>
         </div>
-        {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+        {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
         {sec === "overview" && ov && (
           <div className="stats">

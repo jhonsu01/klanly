@@ -32,6 +32,7 @@ export default function Home() {
   const [resetMode, setResetMode] = useState(false);
   const [resetCode, setResetCode] = useState("");
   const [newPass, setNewPass] = useState("");
+  const [resetDone, setResetDone] = useState(false);
 
   // Community form
   const [cName, setCName] = useState("");
@@ -111,7 +112,10 @@ export default function Home() {
   const doReset = async () => {
     try {
       await api("/auth/reset-password", "POST", { email, code: resetCode, newPassword: newPass });
-      setResetMode(false); setResetCode(""); setNewPass(""); setPassword("");
+      // Dejamos la contraseña nueva puesta en el campo para que solo tenga que pulsar "Entrar"
+      setPassword(newPass);
+      setResetMode(false); setResetCode(""); setNewPass("");
+      setResetDone(true);
       flash("Contraseña cambiada ✔ Ya puedes entrar con la nueva.");
     } catch (e: any) { flash(e.message, false); }
   };
@@ -133,7 +137,7 @@ export default function Home() {
     <div className="container">
       <div className="brand"><div className="logo">K</div><div><h1>Klanly</h1><div className="muted">Plataforma de comunidades de pago · MVP F0/F1</div></div></div>
 
-      {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+      {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
       {me && me.emailVerified === false && (
         <div className="card" style={{ marginTop: 16, borderColor: "var(--gold)" }}>
@@ -186,6 +190,16 @@ export default function Home() {
                 <button onClick={doRegister}>Registrarme</button>
                 <button className="ghost" onClick={doLogin}>Entrar</button>
               </div>
+
+              {resetDone && (
+                <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: "var(--surface2)", border: "1px solid var(--green)" }}>
+                  <div style={{ color: "var(--green)", fontWeight: 600, fontSize: 14 }}>✓ Contraseña cambiada</div>
+                  <div className="muted" style={{ marginTop: 4 }}>
+                    Ya dejamos tu contraseña nueva escrita arriba. Pulsa <b>Entrar</b> para iniciar sesión.
+                  </div>
+                  <button style={{ marginTop: 10 }} onClick={() => { setResetDone(false); doLogin(); }}>Entrar ahora</button>
+                </div>
+              )}
 
               {!resetMode ? (
                 <div style={{ marginTop: 12 }}>

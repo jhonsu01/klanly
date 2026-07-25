@@ -279,7 +279,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         </div>
       </div>
       {c.description && <p className="muted" style={{ marginTop: 8 }}>{c.description}</p>}
-      {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+      {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
       {!c.myMembership && (
         <div className="card" style={{ marginTop: 16 }}>

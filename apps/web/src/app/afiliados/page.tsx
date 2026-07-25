@@ -48,7 +48,7 @@ export default function AffiliatesPage() {
     <div className="container">
       <a href="/" className="muted">← Volver</a>
       <div className="brand" style={{ marginTop: 12 }}><div className="logo">$</div><div><h1>Afiliados</h1><div className="muted">Tus comisiones y liquidaciones</div></div></div>
-      {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+      {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
       <div className="grid" style={{ marginTop: 16 }}>
         <div className="card"><div className="muted">Disponible para retirar</div><div style={{ fontSize: 28, fontWeight: 700, color: "var(--green)" }}>{money(b.availableCents)}</div></div>

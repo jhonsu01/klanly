@@ -56,7 +56,7 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
   return (
     <div className="container">
       <a href="/" className="muted">← Todas las comunidades</a>
-      {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+      {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
       <div className="brand" style={{ marginTop: 12, alignItems: "flex-start" }}>
         {p.avatarUrl

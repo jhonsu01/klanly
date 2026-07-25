@@ -107,3 +107,26 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .fp-preview img { width: 92px; height: 92px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
 .fp-preview-actions { display: flex; flex-direction: column; gap: 8px; }
 .fp-ok { font-size: 13px; color: var(--green); font-weight: 600; }
+
+/* Toast flotante de confirmación/error.
+   Antes el mensaje se pintaba arriba del todo y en móvil quedaba fuera de la
+   pantalla (parecía que el botón "no hacía nada"). Ahora es fijo y visible. */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 9999; margin: 0;
+  max-width: min(92vw, 460px);
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--border); border-left: 4px solid var(--green);
+  border-radius: 12px; padding: 13px 16px; font-size: 14px; line-height: 1.45;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .38);
+  animation: toast-in .18s ease-out;
+}
+.toast.ok { border-left-color: var(--green); color: var(--text); }
+.toast.err { border-left-color: var(--red); color: var(--red); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* Botón de Ko-fi en la barra lateral del admin: nunca debe desbordar */
+.kofi { display: block; margin: 0 auto; width: 100%; max-width: 180px; height: auto; }

@@ -123,7 +123,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         <div className="muted" style={{ marginTop: 4 }}>{d.progressPct}% completado · {d.lessons.length} lecciones</div>
       </div>
 
-      {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+      {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
       {d.isManager && (
         <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
