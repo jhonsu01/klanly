@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   avatarUrl: text("avatar_url"),
   bio: text("bio"),
   country: text("country"),
+  emailVerified: boolean("email_verified").notNull().default(false),
   // user | producer | admin
   platformRole: text("platform_role").notNull().default("user"),
   // Estado de aprobación como productor (paga a la plataforma para publicar)
@@ -408,6 +409,20 @@ export const messages = pgTable(
   (t) => ({
     chatIdx: index("messages_community_created_idx").on(t.communityId, t.createdAt),
   }),
+);
+
+// Códigos de un solo uso: verificación de email y confirmación de acciones sensibles
+export const authCodes = pgTable(
+  "auth_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id),
+    purpose: text("purpose").notNull(), // verify_email | step_up
+    code: text("code").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ idx: index("auth_codes_user_purpose_idx").on(t.userId, t.purpose) }),
 );
 
 // ===================== AJUSTES DE PLATAFORMA (singleton) =====================

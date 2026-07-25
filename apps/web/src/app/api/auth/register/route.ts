@@ -4,6 +4,8 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
+import { issueCode } from "@/lib/codes";
+import { sendEmail, emailTemplate } from "@/lib/mailer";
 import { ok, fail, slugify } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -37,5 +39,12 @@ export async function POST(req: Request) {
   const token = await createSession({ sub: u.id, email: u.email, role: u.platformRole });
   await setSessionCookie(token);
 
-  return ok({ id: u.id, email: u.email, displayName: u.displayName, handle: u.handle, role: u.platformRole }, 201);
+  // Enviar PIN de verificación de 6 dígitos
+  const code = await issueCode(u.id, "verify_email", 30);
+  await sendEmail(u.email, "Verifica tu cuenta en Klanly", emailTemplate(
+    "Verifica tu cuenta",
+    `Tu código de verificación es: <b style="font-size:22px;letter-spacing:3px">${code}</b><br/>Ingrésalo en la app para activar tu cuenta. Vence en 30 minutos.`,
+  ));
+
+  return ok({ id: u.id, email: u.email, displayName: u.displayName, handle: u.handle, role: u.platformRole, emailVerified: false }, 201);
 }

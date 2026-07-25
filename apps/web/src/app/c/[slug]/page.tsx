@@ -10,7 +10,7 @@ type Community = {
   priceCents: number; currency: string; billingPeriod: string; isPublic?: boolean;
   affiliateEnabled?: boolean; affiliateCommissionPct?: number; payoutTermsDays?: number;
   manualEnabled?: boolean; manualAccounts?: { bank: string; number: string; name: string }[];
-  memberCount: number; myMembership: Membership;
+  memberCount: number; myMembership: Membership; myOrderStatus?: string | null;
 };
 type Account = { bank: string; number: string; name: string };
 type Applicant = { userId: string; code: string; status: string; displayName: string; handle: string };
@@ -57,7 +57,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [chatText, setChatText] = useState("");
   const [evForm, setEvForm] = useState({ title: "", startsAt: "", linkUrl: "" });
   const [busy, setBusy] = useState(false);
-  const [settings, setSettings] = useState({ name: "", description: "", priceUsd: "0", iconUrl: "", isPublic: true, affiliateEnabled: false, commissionPct: "0", payoutTermsDays: 30 });
+  const [settings, setSettings] = useState({ name: "", description: "", priceUsd: "0", currency: "USD", iconUrl: "", isPublic: true, affiliateEnabled: false, commissionPct: "0", payoutTermsDays: 30 });
   const [manualEnabled, setManualEnabled] = useState(true);
   const [manualAccounts, setManualAccounts] = useState<Account[]>([]);
   const [openPost, setOpenPost] = useState<string | null>(null);
@@ -78,6 +78,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       setC(com);
       setSettings({
         name: com.name, description: com.description || "", priceUsd: (com.priceCents / 100).toString(),
+        currency: com.currency || "USD",
         iconUrl: com.iconUrl || "", isPublic: com.isPublic ?? true,
         affiliateEnabled: com.affiliateEnabled ?? false, commissionPct: String(com.affiliateCommissionPct ?? 0),
         payoutTermsDays: com.payoutTermsDays ?? 30,
@@ -188,6 +189,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       await api(`/communities/${c.slug}`, "PATCH", {
         name: settings.name, description: settings.description,
         priceCents: Math.round(parseFloat(settings.priceUsd || "0") * 100),
+        currency: settings.currency,
         iconUrl: settings.iconUrl || undefined, isPublic: settings.isPublic,
         affiliateEnabled: settings.affiliateEnabled,
         affiliateCommissionPct: parseFloat(settings.commissionPct || "0"),
@@ -281,6 +283,10 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         <div className="card" style={{ marginTop: 16 }}>
           <h2>{isPastDue ? "Renovar acceso (comprobante)" : "Pago manual (comprobante)"}</h2>
           {isPastDue && <div className="err" style={{ marginBottom: 6 }}>Tu acceso venció{c.myMembership?.accessUntil ? ` el ${new Date(c.myMembership.accessUntil).toLocaleDateString()}` : ""}. Renueva para recuperar el acceso.</div>}
+          {c.myOrderStatus === "awaiting_review" ? (
+            <div className="out ok">✅ Tu comprobante está <b>en revisión</b>. El productor lo aprobará pronto; te notificaremos por correo.</div>
+          ) : (<>
+          {c.myOrderStatus === "failed" && <div className="err" style={{ marginBottom: 6 }}>Tu comprobante anterior fue rechazado. Adjunta uno nuevo.</div>}
           <div className="muted">Transfiere {money(c.priceCents, c.currency)} a una de estas cuentas y sube la foto/captura de tu comprobante:</div>
           {(c.manualAccounts && c.manualAccounts.length > 0) ? (
             <div style={{ margin: "10px 0" }}>
@@ -298,11 +304,12 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
           <input type="file" accept="image/*" onChange={(e) => uploadProof(e.target.files?.[0])} />
           {proofUrl && <img src={proofUrl} alt="comprobante" style={{ maxWidth: 220, borderRadius: 8, marginTop: 8, display: "block" }} />}
           <button onClick={payManual} disabled={!proofUrl || busy}>{busy ? "Subiendo…" : "Enviar comprobante"}</button>
+          </>)}
         </div>
       )}
       {isMember && c.myMembership && (
         <div className="card" style={{ marginTop: 16 }}>
-          <div>Tu estado: <span className="pill">{c.myMembership.role}</span> · Nivel {c.myMembership.level} · {c.myMembership.points} pts{c.myMembership.accessUntil && !isFree ? ` · acceso hasta ${new Date(c.myMembership.accessUntil).toLocaleDateString()}` : ""}</div>
+          <div>Tu estado: <span className="pill">{c.myMembership.role}</span> · Nivel {c.myMembership.level} · {c.myMembership.points} pts{c.myMembership.accessUntil && !isFree ? ` · acceso hasta ${new Date(c.myMembership.accessUntil).toLocaleDateString()} (${Math.max(0, Math.ceil((new Date(c.myMembership.accessUntil).getTime() - Date.now()) / 86400000))} días)` : ""}</div>
         </div>
       )}
 
@@ -490,8 +497,14 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
           <input value={settings.name} onChange={(e) => setSettings({ ...settings, name: e.target.value })} />
           <label>Descripción</label>
           <textarea rows={3} value={settings.description} onChange={(e) => setSettings({ ...settings, description: e.target.value })} />
-          <label>Precio mensual (USD, 0 = gratis)</label>
-          <input value={settings.priceUsd} onChange={(e) => setSettings({ ...settings, priceUsd: e.target.value })} />
+          <label>Precio mensual (0 = gratis)</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={settings.priceUsd} onChange={(e) => setSettings({ ...settings, priceUsd: e.target.value })} />
+            <select style={{ width: 100 }} value={settings.currency} onChange={(e) => setSettings({ ...settings, currency: e.target.value })}>
+              <option value="USD">USD</option>
+              <option value="COP">COP</option>
+            </select>
+          </div>
           <label>Ícono de la comunidad</label>
           <input type="file" accept="image/*" onChange={(e) => uploadIcon(e.target.files?.[0])} />
           {settings.iconUrl && <img src={settings.iconUrl} alt="" style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover", marginTop: 8, display: "block" }} />}

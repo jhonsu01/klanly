@@ -17,6 +17,7 @@ export async function GET() {
     displayName: u.displayName,
     handle: u.handle,
     role: u.platformRole,
+    emailVerified: u.emailVerified,
     producerStatus: u.producerStatus,
     producerAccessUntil: u.producerAccessUntil,
     avatarUrl: u.avatarUrl,

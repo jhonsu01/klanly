@@ -18,6 +18,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function POST(_req: Request, { params }: { params: { slug: string } }) {
   const me = await currentUser();
   if (!me) return fail("No autenticado", 401);
+  if (!me.emailVerified) return fail("Verifica tu correo para continuar.", 403, { needsVerify: true });
 
   const key = params.slug;
   const [c] = await db

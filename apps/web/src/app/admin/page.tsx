@@ -226,8 +226,12 @@ export default function AdminPage() {
             {plans.map((p, i) => (
               <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <input style={{ flex: 1, minWidth: 80 }} placeholder="Etiqueta (1 mes)" value={p.label} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
-                <input style={{ width: 90 }} type="number" placeholder="Meses" value={p.months} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, months: parseInt(e.target.value || "1", 10) } : x))} />
-                <input style={{ width: 110 }} type="number" placeholder="Precio USD" value={(p.priceCents / 100).toString()} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, priceCents: Math.round(parseFloat(e.target.value || "0") * 100) } : x))} />
+                <input style={{ width: 80 }} type="number" placeholder="Meses" value={p.months} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, months: parseInt(e.target.value || "1", 10) } : x))} />
+                <input style={{ width: 100 }} type="number" placeholder="Precio" value={(p.priceCents / 100).toString()} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, priceCents: Math.round(parseFloat(e.target.value || "0") * 100) } : x))} />
+                <select style={{ width: 80 }} value={p.currency} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, currency: e.target.value } : x))}>
+                  <option value="USD">USD</option>
+                  <option value="COP">COP</option>
+                </select>
                 <button className="ghost" style={{ marginTop: 0, color: "#ffb4c4" }} onClick={() => setPlans(plans.filter((_, j) => j !== i))}>✕</button>
               </div>
             ))}

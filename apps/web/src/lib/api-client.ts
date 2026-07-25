@@ -12,7 +12,10 @@ export async function api(path: string, method = "GET", body?: unknown) {
 }
 
 export function money(cents: number, currency = "USD") {
-  return `$${(cents / 100).toFixed(2)} ${currency}`;
+  const amount = cents / 100;
+  if (currency === "COP") return `$${Math.round(amount).toLocaleString("es-CO")} COP`;
+  const s = amount % 1 === 0 ? amount.toLocaleString("en-US") : amount.toFixed(2);
+  return `$${s} USD`;
 }
 
 // Sube una imagen a /api/upload y devuelve su URL pública.

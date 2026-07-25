@@ -161,6 +161,12 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         </div>
       )}
 
+      {!d.isMember && !d.isManager ? (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="muted">🔒 Debes ser <b>miembro activo</b> de la comunidad para ver las lecciones. Únete y realiza el pago para acceder.</div>
+          {d.community && <a href={`/c/${d.community.slug}`}><button style={{ marginTop: 12 }}>Ir a la comunidad</button></a>}
+        </div>
+      ) : (
       <div className="course-grid" style={{ marginTop: 16 }}>
         <div className="card" style={{ alignSelf: "start" }}>
           {d.lessons.length === 0 && <div className="muted">Este curso aún no tiene lecciones.</div>}
@@ -229,6 +235,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

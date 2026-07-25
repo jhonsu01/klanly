@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/db";
-import { communities, memberships, subscriptions } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { communities, memberships, subscriptions, paymentOrders } from "@/db/schema";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { ok, fail } from "@/lib/http";
 import { currentUser } from "@/lib/auth";
 
@@ -36,6 +36,18 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     }
   }
 
+  // Estado de la última orden del usuario (para el flujo de comprobante)
+  let myOrderStatus: string | null = null;
+  if (me) {
+    const [o] = await db
+      .select({ status: paymentOrders.status })
+      .from(paymentOrders)
+      .where(and(eq(paymentOrders.communityId, c.id), eq(paymentOrders.userId, me.id)))
+      .orderBy(desc(paymentOrders.createdAt))
+      .limit(1);
+    myOrderStatus = o?.status ?? null;
+  }
+
   return ok({
     id: c.id,
     slug: c.slug,
@@ -53,6 +65,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     manualAccounts: c.manualAccounts ?? [],
     memberCount: count,
     myMembership,
+    myOrderStatus,
   });
 }
 
@@ -61,6 +74,7 @@ const PatchBody = z.object({
   description: z.string().max(1000).optional(),
   iconUrl: z.string().url().optional(),
   priceCents: z.number().int().min(0).optional(),
+  currency: z.enum(["USD", "COP"]).optional(),
   billingPeriod: z.enum(["free", "month", "year", "one_time"]).optional(),
   isPublic: z.boolean().optional(),
   affiliateEnabled: z.boolean().optional(),
@@ -99,6 +113,7 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
   if (b.description !== undefined) patch.description = b.description;
   if (b.iconUrl !== undefined) patch.iconUrl = b.iconUrl;
   if (b.isPublic !== undefined) patch.isPublic = b.isPublic;
+  if (b.currency !== undefined) patch.currency = b.currency;
   if (b.affiliateEnabled !== undefined) patch.affiliateEnabled = b.affiliateEnabled;
   if (b.affiliateCommissionPct !== undefined) patch.affiliateCommissionPct = String(b.affiliateCommissionPct);
   if (b.payoutTermsDays !== undefined) patch.payoutTermsDays = b.payoutTermsDays;

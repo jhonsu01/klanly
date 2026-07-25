@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, uploadFile } from "@/lib/api-client";
+import { api, uploadFile, money } from "@/lib/api-client";
 
-type Me = { id: string; email: string; displayName: string; handle: string; role: string; producerStatus?: string; producerAccessUntil?: string | null } | null;
+type Me = { id: string; email: string; displayName: string; handle: string; role: string; emailVerified?: boolean; producerStatus?: string; producerAccessUntil?: string | null } | null;
 type Community = {
   id: string;
   slug: string;
@@ -27,11 +27,13 @@ export default function Home() {
   const [displayName, setDisplayName] = useState("");
   const [code, setCode] = useState("");
   const [needs2fa, setNeeds2fa] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
 
   // Community form
   const [cName, setCName] = useState("");
   const [cDesc, setCDesc] = useState("");
   const [cPrice, setCPrice] = useState("0");
+  const [showCreate, setShowCreate] = useState(false);
 
   // Solicitud de productor
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -90,6 +92,14 @@ export default function Home() {
     try { await api("/producer/apply", "POST", { planMonths: selPlan, proofUrl: prodProof || undefined }); flash("Solicitud enviada. El admin verificará tu pago."); refresh(); }
     catch (e: any) { flash(e.message, false); }
   };
+  const verifyEmail = async () => {
+    try { await api("/auth/verify-email", "POST", { code: verifyCode }); setVerifyCode(""); flash("¡Cuenta verificada! ✔"); refresh(); }
+    catch (e: any) { flash(e.message, false); }
+  };
+  const resendVerify = async () => {
+    try { await api("/auth/resend-verification", "POST"); flash("Código reenviado a tu correo ✔"); }
+    catch (e: any) { flash(e.message, false); }
+  };
 
   const join = async (c: Community) => {
     try {
@@ -105,6 +115,18 @@ export default function Home() {
       <div className="brand"><div className="logo">K</div><div><h1>Klanly</h1><div className="muted">Plataforma de comunidades de pago · MVP F0/F1</div></div></div>
 
       {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+
+      {me && me.emailVerified === false && (
+        <div className="card" style={{ marginTop: 16, borderColor: "var(--gold)" }}>
+          <h2>✉️ Verifica tu correo</h2>
+          <div className="muted">Te enviamos un código de 6 dígitos a <b>{me.email}</b>. Ingrésalo para activar tu cuenta (necesario para unirte, pagar o crear comunidades).</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: 140 }} />
+            <button style={{ marginTop: 0 }} onClick={verifyEmail} disabled={verifyCode.length !== 6}>Verificar</button>
+            <button className="ghost" style={{ marginTop: 0 }} onClick={resendVerify}>Reenviar código</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid">
         {/* Sesión */}
@@ -146,9 +168,13 @@ export default function Home() {
           )}
         </div>
 
-        {/* Crear comunidad */}
+        {/* Crear comunidad (colapsable) */}
         <div className="card">
-          <h2>Crear comunidad</h2>
+          <div onClick={() => setShowCreate((s) => !s)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+            <h2 style={{ margin: 0 }}>Publicar comunidad</h2>
+            <span className="muted" style={{ fontSize: 13 }}>{showCreate ? "▾ ocultar" : "▸ soy productor"}</span>
+          </div>
+          {showCreate && <div style={{ marginTop: 12 }}>
           {!me ? (
             <div className="muted">Inicia sesión para crear una comunidad.</div>
           ) : (me.role === "admin" || me.producerStatus === "approved") ? (
@@ -170,7 +196,7 @@ export default function Home() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                 {plans.length === 0 && <div className="muted">El administrador aún no configuró planes.</div>}
                 {plans.map((p) => (
-                  <button key={p.months} className={selPlan === p.months ? "" : "ghost"} style={{ marginTop: 0 }} onClick={() => setSelPlan(p.months)}>{p.label} · ${(p.priceCents / 100).toFixed(2)}</button>
+                  <button key={p.months} className={selPlan === p.months ? "" : "ghost"} style={{ marginTop: 0 }} onClick={() => setSelPlan(p.months)}>{p.label} · {money(p.priceCents, p.currency)}</button>
                 ))}
               </div>
               {adminAccounts.length > 0 && (
@@ -191,6 +217,7 @@ export default function Home() {
               {me.producerStatus === "rejected" && <div className="out err" style={{ marginTop: 8 }}>Tu solicitud anterior fue rechazada.</div>}
             </>
           )}
+          </div>}
         </div>
       </div>
 

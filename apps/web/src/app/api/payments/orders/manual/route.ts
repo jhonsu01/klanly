@@ -25,6 +25,7 @@ const Body = z.object({
 export async function POST(req: Request) {
   const me = await currentUser();
   if (!me) return fail("No autenticado", 401);
+  if (!me.emailVerified) return fail("Verifica tu correo para continuar.", 403, { needsVerify: true });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Datos inválidos", 422, { issues: parsed.error.issues });
