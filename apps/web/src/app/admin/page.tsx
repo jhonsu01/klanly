@@ -38,7 +38,7 @@ export default function AdminPage() {
     setComs(await api(`/admin/communities`).catch(() => []));
     setAudit(await api(`/admin/audit`).catch(() => []));
   }, []);
-  useEffect(() => { if (me?.role === "admin") refresh(); }, [me, refresh]);
+  useEffect(() => { if (me?.role === "admin") refresh(); }, [me, sec, refresh]);
 
   if (!ready) return <div className="container"><p className="muted">Cargando…</p></div>;
   if (!me) return <div className="container"><div className="brand"><div className="logo">K</div><h1>Klanly Admin</h1></div><div className="card" style={{ marginTop: 16 }}><div className="muted">Inicia sesión con tu cuenta de administrador.</div><a href="/"><button style={{ marginTop: 10 }}>Ir a iniciar sesión</button></a></div></div>;
@@ -74,8 +74,13 @@ export default function AdminPage() {
       </aside>
 
       <main className="admin-main">
-        <h1>Panel de administración</h1>
-        <div className="muted" style={{ marginBottom: 20 }}>Supervisión global de la plataforma · cobros manuales, afiliados y liquidaciones</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <h1>Panel de administración</h1>
+            <div className="muted" style={{ marginBottom: 20 }}>Supervisión global de la plataforma · cobros manuales, afiliados y liquidaciones</div>
+          </div>
+          <button className="ghost" style={{ marginTop: 0 }} onClick={refresh}>↻ Actualizar</button>
+        </div>
         {msg && <div className={`out ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
         {sec === "overview" && ov && (

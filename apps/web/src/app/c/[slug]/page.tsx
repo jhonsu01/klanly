@@ -14,7 +14,7 @@ type Community = {
 type Account = { bank: string; number: string; name: string };
 type Applicant = { userId: string; code: string; status: string; displayName: string; handle: string };
 type AffPayout = { id: string; amountCents: number; currency: string; method?: string; status: string; payeeName: string };
-type Post = { id: string; title?: string; body?: string; likeCount: number; authorName: string };
+type Post = { id: string; title?: string; body?: string; category?: string; pinned?: boolean; likeCount: number; authorName: string; authorHandle?: string };
 type Course = { id: string; title: string; description?: string; minLevel: number };
 type Member = { userId: string; role: string; level: number; points: number; displayName: string; handle: string };
 type Pending = { id: string; amountCents: number; currency: string; proofUrl?: string; userEmail: string };
@@ -48,6 +48,9 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [showNotis, setShowNotis] = useState(false);
 
   const [postBody, setPostBody] = useState("");
+  const [postTitle, setPostTitle] = useState("");
+  const [postCategory, setPostCategory] = useState("");
+  const [memberQuery, setMemberQuery] = useState("");
   const [courseTitle, setCourseTitle] = useState("");
   const [proofUrl, setProofUrl] = useState("");
   const [chatText, setChatText] = useState("");
@@ -195,8 +198,10 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     catch (e: any) { flash(e.message, false); }
   };
   const affiliateLink = myAff ? `${typeof window !== "undefined" ? window.location.origin : ""}/c/${c.slug}?ref=${myAff.code}` : "";
-  const publish = async () => { try { await api(`/communities/${c.slug}/posts`, "POST", { body: postBody }); setPostBody(""); flash("Publicado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
+  const publish = async () => { try { await api(`/communities/${c.slug}/posts`, "POST", { body: postBody, title: postTitle || undefined, category: postCategory || undefined }); setPostBody(""); setPostTitle(""); setPostCategory(""); flash("Publicado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
   const like = async (id: string) => { try { await api(`/posts/${id}/like`, "POST"); load(); } catch (e: any) { flash(e.message, false); } };
+  const pinPost = async (id: string, pinned: boolean) => { try { await api(`/posts/${id}`, "PATCH", { pinned }); flash(pinned ? "Fijado ✔" : "Desfijado"); load(); } catch (e: any) { flash(e.message, false); } };
+  const delPost = async (id: string) => { if (!confirm("¿Borrar esta publicación?")) return; try { await api(`/posts/${id}`, "DELETE"); flash("Borrado"); load(); } catch (e: any) { flash(e.message, false); } };
   const createCourse = async () => { try { await api(`/communities/${c.slug}/courses`, "POST", { title: courseTitle }); setCourseTitle(""); flash("Curso creado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
   const review = async (id: string, decision: "approve" | "reject") => { try { await api(`/payments/orders/${id}/review`, "POST", { decision }); flash(decision === "approve" ? "Aprobado ✔" : "Rechazado"); load(); } catch (e: any) { flash(e.message, false); } };
   const changeRole = async (userId: string, role: string) => { try { await api(`/communities/${c.slug}/members/${userId}`, "PATCH", { role }); flash("Rol actualizado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
@@ -295,7 +300,9 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       {tab === "community" && (
         <div className="card">
           {isMember ? (<>
-            <textarea value={postBody} onChange={(e) => setPostBody(e.target.value)} rows={2} placeholder="Escribe algo…" />
+            <input value={postTitle} onChange={(e) => setPostTitle(e.target.value)} placeholder="Título (opcional)" />
+            <textarea value={postBody} onChange={(e) => setPostBody(e.target.value)} rows={2} placeholder="Escribe algo…" style={{ marginTop: 8 }} />
+            <input value={postCategory} onChange={(e) => setPostCategory(e.target.value)} placeholder="Categoría (opcional)" style={{ marginTop: 8 }} />
             <button onClick={publish} disabled={!postBody}>Publicar</button>
           </>) : <div className="muted">Únete para publicar.</div>}
           <div style={{ marginTop: 16 }}>
@@ -303,9 +310,20 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
             {posts.map((p) => (
               <div key={p.id} style={{ borderBottom: "1px solid var(--border)", padding: "12px 0" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <div>{p.title && <div style={{ fontWeight: 600 }}>{p.title}</div>}<div>{p.body}</div><div className="muted">{p.authorName}</div></div>
+                  <div>
+                    {(p.pinned || p.category) && <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>{p.pinned && <span className="pill" style={{ color: "var(--accent2)" }}>📌 Fijado</span>}{p.category && <span className="pill">{p.category}</span>}</div>}
+                    {p.title && <div style={{ fontWeight: 600 }}>{p.title}</div>}
+                    <div>{p.body}</div>
+                    <a href={`/u/${p.authorHandle}`} className="muted" style={{ textDecoration: "none" }}>{p.authorName}</a>
+                  </div>
                   <button className="ghost" style={{ marginTop: 0 }} onClick={() => like(p.id)}>👍 {p.likeCount}</button>
                 </div>
+                {isManager && (
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <button className="ghost" style={{ marginTop: 0, fontSize: 12, padding: "3px 8px" }} onClick={() => pinPost(p.id, !p.pinned)}>{p.pinned ? "Desfijar" : "📌 Fijar"}</button>
+                    <button className="ghost" style={{ marginTop: 0, fontSize: 12, padding: "3px 8px", color: "#ffb4c4" }} onClick={() => delPost(p.id)}>🗑</button>
+                  </div>
+                )}
                 {isMember && <button className="ghost" style={{ marginTop: 8, fontSize: 12, padding: "4px 10px" }} onClick={() => toggleComments(p.id)}>💬 Comentarios</button>}
                 {openPost === p.id && (
                   <div style={{ marginTop: 8, paddingLeft: 12 }}>
@@ -391,7 +409,11 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
 
       {tab === "members" && (
         <div className="card">
-          {members.map((m) => (
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <input value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} placeholder="Buscar miembro…" />
+            <button className="ghost" style={{ marginTop: 0, whiteSpace: "nowrap" }} onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/c/${c.slug}`); flash("Link de invitación copiado ✔"); }}>Invitar</button>
+          </div>
+          {members.filter((m) => !memberQuery || m.displayName.toLowerCase().includes(memberQuery.toLowerCase()) || m.handle.toLowerCase().includes(memberQuery.toLowerCase())).map((m) => (
             <div className="row" key={m.userId}>
               <div><a href={`/u/${m.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{m.displayName}</a> <span className="muted">@{m.handle}</span> · <span className="pill">{m.role}</span> · Nv {m.level} · {m.points} pts</div>
               {isOwner && m.role !== "owner" && (

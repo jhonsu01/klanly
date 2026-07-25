@@ -4,6 +4,7 @@ export async function api(path: string, method = "GET", body?: unknown) {
     method,
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store", // evita respuestas cacheadas (p. ej. listas del admin desactualizadas)
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error || `Error ${res.status}`);
