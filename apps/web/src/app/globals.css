@@ -130,3 +130,46 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Botón de Ko-fi en la barra lateral del admin: nunca debe desbordar */
 .kofi { display: block; margin: 0 auto; width: 100%; max-width: 180px; height: auto; }
+
+/* Visor de comprobantes a pantalla completa (ImageViewer).
+   Reemplaza el target="_blank" que no funcionaba en Tauri ni en el WebView. */
+.iv-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0, 0, 0, .92);
+  display: flex; flex-direction: column; align-items: center;
+}
+.iv-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+  padding: 10px 12px; width: 100%;
+  background: rgba(0, 0, 0, .55); border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.iv-bar button { margin-top: 0; min-width: 44px; padding: 8px 12px; }
+.iv-pct { color: #fff; font-size: 13px; min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+.iv-stage {
+  flex: 1; width: 100%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none; cursor: grab;
+}
+.iv-stage:active { cursor: grabbing; }
+.iv-stage img {
+  max-width: 96vw; max-height: 100%;
+  transform-origin: center center; transition: transform .05s linear;
+  user-select: none; -webkit-user-drag: none;
+}
+.iv-hint { color: rgba(255, 255, 255, .6); font-size: 12px; padding: 10px 16px 16px; text-align: center; }
+
+/* Fila de comprobante por revisar: se apila en pantallas angostas
+   (antes los botones Aprobar/Rechazar quedaban fuera de la pantalla) */
+.proof-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.proof-row:last-child { border-bottom: none; }
+.proof-row .proof-info { flex: 1 1 180px; min-width: 0; }
+.proof-row .proof-info > div { overflow-wrap: anywhere; }
+.proof-row .proof-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.proof-row .proof-actions button { margin-top: 0; }
+.proof-thumb {
+  height: 56px; width: 56px; object-fit: cover; border-radius: 8px;
+  border: 1px solid var(--border); cursor: zoom-in; flex-shrink: 0;
+}

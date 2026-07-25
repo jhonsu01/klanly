@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, money, uploadFile, askStepUp } from "@/lib/api-client";
 import FilePicker from "@/components/FilePicker";
+import ImageViewer from "@/components/ImageViewer";
 import { getPusherClient, realtimeEnabled } from "@/lib/pusher-client";
 
 type Membership = { role: string; status: string; level: number; points: number; accessUntil?: string | null } | null;
@@ -70,6 +71,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [refCode, setRefCode] = useState<string | null>(null);
   const [income, setIncome] = useState<Income | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<string | null>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -280,6 +282,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       </div>
       {c.description && <p className="muted" style={{ marginTop: 8 }}>{c.description}</p>}
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
+      {viewer && <ImageViewer src={viewer} onClose={() => setViewer(null)} />}
 
       {!c.myMembership && (
         <div className="card" style={{ marginTop: 16 }}>
@@ -655,16 +658,18 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
           <h2>Comprobantes por revisar</h2>
           {pending.length === 0 && <div className="muted">Nada pendiente.</div>}
           {pending.map((o) => (
-            <div className="row" key={o.id}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                {o.proofUrl
-                  ? <a href={o.proofUrl} target="_blank" rel="noreferrer"><img src={o.proofUrl} alt="comprobante" style={{ height: 56, width: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /></a>
-                  : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
-                <div>{o.userEmail}<div className="muted">{money(o.amountCents, o.currency)}</div></div>
+            <div className="proof-row" key={o.id}>
+              {o.proofUrl
+                ? <img className="proof-thumb" src={o.proofUrl} alt="comprobante" title="Ver en grande" onClick={() => setViewer(o.proofUrl!)} />
+                : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
+              <div className="proof-info">
+                {o.userEmail}
+                <div className="muted">{money(o.amountCents, o.currency)}</div>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => review(o.id, "approve")}>Aprobar</button>
-                <button className="ghost" style={{ marginTop: 0 }} onClick={() => review(o.id, "reject")}>Rechazar</button>
+              <div className="proof-actions">
+                {o.proofUrl && <button className="ghost" onClick={() => setViewer(o.proofUrl!)}>🔍 Ver</button>}
+                <button style={{ background: "var(--green)", color: "#04231a" }} onClick={() => review(o.id, "approve")}>Aprobar</button>
+                <button className="ghost" onClick={() => review(o.id, "reject")}>Rechazar</button>
               </div>
             </div>
           ))}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, money, askStepUp } from "@/lib/api-client";
+import ImageViewer from "@/components/ImageViewer";
 
 type Me = { handle: string; role: string; displayName?: string; email?: string; twoFactorEnabled?: boolean } | null;
 type Overview = { communities: number; users: number; pendingProducers: number; pendingProofs: number; pendingPayouts: number; grossRevenueCents: number };
@@ -20,6 +21,7 @@ export default function AdminPage() {
   const [ready, setReady] = useState(false);
   const [sec, setSec] = useState<Section>("overview");
   const [msg, setMsg] = useState<{ t: string; ok: boolean } | null>(null);
+  const [viewer, setViewer] = useState<string | null>(null);
 
   const [ov, setOv] = useState<Overview | null>(null);
   const [producers, setProducers] = useState<Producer[]>([]);
@@ -91,6 +93,7 @@ export default function AdminPage() {
 
   return (
     <div className="admin-shell">
+      {viewer && <ImageViewer src={viewer} onClose={() => setViewer(null)} />}
       <aside className="admin-side">
         <div className="brand" style={{ padding: "0 6px 18px" }}><div className="logo">K</div><div><b>Klanly</b><div className="muted" style={{ fontSize: 11 }}>Admin Console</div></div></div>
         <nav className="admin-nav">
@@ -137,19 +140,18 @@ export default function AdminPage() {
             <div className="muted" style={{ marginBottom: 8 }}>Aprueba a quienes pagan la suscripción mensual para publicar comunidades.</div>
             {pendingProducers.length === 0 && <div className="muted">Sin solicitudes pendientes.</div>}
             {pendingProducers.map((p) => (
-              <div className="row" key={p.id}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  {p.proofUrl
-                    ? <a href={p.proofUrl} target="_blank" rel="noreferrer"><img src={p.proofUrl} alt="comprobante" style={{ height: 56, width: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /></a>
-                    : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
-                  <div>
-                    <a href={`/u/${p.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{p.displayName}</a>
-                    <div className="muted">{p.email}{p.planMonths ? ` · plan ${p.planMonths} mes(es)` : ""}</div>
-                  </div>
+              <div className="proof-row" key={p.id}>
+                {p.proofUrl
+                  ? <img className="proof-thumb" src={p.proofUrl} alt="comprobante" title="Ver en grande" onClick={() => setViewer(p.proofUrl!)} />
+                  : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
+                <div className="proof-info">
+                  <a href={`/u/${p.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{p.displayName}</a>
+                  <div className="muted">{p.email}{p.planMonths ? ` · plan ${p.planMonths} mes(es)` : ""}</div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => reviewProducer(p.id, "approve")}>Aprobar</button>
-                  <button className="ghost" style={{ marginTop: 0 }} onClick={() => reviewProducer(p.id, "reject")}>Rechazar</button>
+                <div className="proof-actions">
+                  {p.proofUrl && <button className="ghost" onClick={() => setViewer(p.proofUrl!)}>🔍 Ver</button>}
+                  <button style={{ background: "var(--green)", color: "#04231a" }} onClick={() => reviewProducer(p.id, "approve")}>Aprobar</button>
+                  <button className="ghost" onClick={() => reviewProducer(p.id, "reject")}>Rechazar</button>
                 </div>
               </div>
             ))}
@@ -165,16 +167,18 @@ export default function AdminPage() {
             <h2>Cola de cobros manuales (global)</h2>
             {proofs.length === 0 && <div className="muted">Nada pendiente.</div>}
             {proofs.map((o) => (
-              <div className="row" key={o.id}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  {o.proofUrl
-                    ? <a href={o.proofUrl} target="_blank" rel="noreferrer"><img src={o.proofUrl} alt="comprobante" style={{ height: 56, width: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /></a>
-                    : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
-                  <div>{o.userEmail}<div className="muted">{o.communityName} · {money(o.amountCents, o.currency)}</div></div>
+              <div className="proof-row" key={o.id}>
+                {o.proofUrl
+                  ? <img className="proof-thumb" src={o.proofUrl} alt="comprobante" title="Ver en grande" onClick={() => setViewer(o.proofUrl!)} />
+                  : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
+                <div className="proof-info">
+                  {o.userEmail}
+                  <div className="muted">{o.communityName} · {money(o.amountCents, o.currency)}</div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => reviewProof(o.id, "approve")}>Aprobar</button>
-                  <button className="ghost" style={{ marginTop: 0 }} onClick={() => reviewProof(o.id, "reject")}>Rechazar</button>
+                <div className="proof-actions">
+                  {o.proofUrl && <button className="ghost" onClick={() => setViewer(o.proofUrl!)}>🔍 Ver</button>}
+                  <button style={{ background: "var(--green)", color: "#04231a" }} onClick={() => reviewProof(o.id, "approve")}>Aprobar</button>
+                  <button className="ghost" onClick={() => reviewProof(o.id, "reject")}>Rechazar</button>
                 </div>
               </div>
             ))}
