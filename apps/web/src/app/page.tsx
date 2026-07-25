@@ -29,6 +29,9 @@ export default function Home() {
   const [code, setCode] = useState("");
   const [needs2fa, setNeeds2fa] = useState(false);
   const [verifyCode, setVerifyCode] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [resetCode, setResetCode] = useState("");
+  const [newPass, setNewPass] = useState("");
 
   // Community form
   const [cName, setCName] = useState("");
@@ -96,6 +99,21 @@ export default function Home() {
   const verifyEmail = async () => {
     try { await api("/auth/verify-email", "POST", { code: verifyCode }); setVerifyCode(""); flash("¡Cuenta verificada! ✔"); refresh(); }
     catch (e: any) { flash(e.message, false); }
+  };
+  const startReset = async () => {
+    if (!email.trim()) { flash("Escribe tu correo primero", false); return; }
+    try {
+      await api("/auth/forgot-password", "POST", { email });
+      setResetMode(true);
+      flash("Si el correo está registrado, te enviamos un código. Revisa también la carpeta de Spam.");
+    } catch (e: any) { flash(e.message, false); }
+  };
+  const doReset = async () => {
+    try {
+      await api("/auth/reset-password", "POST", { email, code: resetCode, newPassword: newPass });
+      setResetMode(false); setResetCode(""); setNewPass(""); setPassword("");
+      flash("Contraseña cambiada ✔ Ya puedes entrar con la nueva.");
+    } catch (e: any) { flash(e.message, false); }
   };
   const resendVerify = async () => {
     try { await api("/auth/resend-verification", "POST"); flash("Código reenviado ✔ Revisa también la carpeta de SPAM."); }
@@ -168,6 +186,36 @@ export default function Home() {
                 <button onClick={doRegister}>Registrarme</button>
                 <button className="ghost" onClick={doLogin}>Entrar</button>
               </div>
+
+              {!resetMode ? (
+                <div style={{ marginTop: 12 }}>
+                  <a
+                    className="muted"
+                    style={{ cursor: "pointer", textDecoration: "underline" }}
+                    onClick={startReset}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </a>
+                </div>
+              ) : (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>Restablecer contraseña</div>
+                  <div className="muted" style={{ marginTop: 4 }}>
+                    Enviamos un código de 6 dígitos a <b>{email}</b>. <b>Revisa también la carpeta de Spam.</b>
+                    {" "}Si tienes 2FA activo, puedes usar el código de tu app de autenticación.
+                  </div>
+                  <label>Código (6 dígitos)</label>
+                  <input value={resetCode} onChange={(e) => setResetCode(e.target.value)} placeholder="123456" maxLength={6} />
+                  <label>Nueva contraseña (mín. 8)</label>
+                  <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="••••••••" />
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button onClick={doReset} disabled={resetCode.length !== 6 || newPass.length < 8}>Cambiar contraseña</button>
+                    <button className="ghost" onClick={startReset}>Reenviar código</button>
+                    <button className="ghost" onClick={() => { setResetMode(false); setResetCode(""); setNewPass(""); }}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+
               <div className="muted" style={{ marginTop: 10 }}>
                 Al registrarte te enviamos un código de 6 dígitos para activar tu cuenta.
                 Si no lo encuentras, <b>revisa la carpeta de Spam</b> o correo no deseado.
