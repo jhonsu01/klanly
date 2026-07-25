@@ -87,6 +87,11 @@ export default function AdminPage() {
           <Item id="audit" icon="🔎" label="Auditoría" />
           <Item id="settings" icon="⚙️" label="Ajustes" />
         </nav>
+        <div style={{ marginTop: 24, padding: "0 6px", textAlign: "center" }}>
+          <a href="https://ko-fi.com/V7V81LV7GX" target="_blank" rel="noreferrer">
+            <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Apóyame en Ko-fi" style={{ height: 32 }} />
+          </a>
+        </div>
       </aside>
 
       <main className="admin-main">

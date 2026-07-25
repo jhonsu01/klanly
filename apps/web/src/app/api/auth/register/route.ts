@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword, createSession, setSessionCookie } from "@/lib/auth";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { ok, fail, slugify } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -15,6 +16,9 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const rl = rateLimit(`register:${clientIp(req)}`, 5, 60_000);
+  if (!rl.ok) return fail("Demasiados intentos. Espera un momento.", 429);
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Datos inválidos", 422, { issues: parsed.error.issues });
   const { email, password, displayName } = parsed.data;
