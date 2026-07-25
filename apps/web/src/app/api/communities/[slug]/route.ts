@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { db } from "@/db";
-import { communities, memberships } from "@/db/schema";
+import { communities, memberships, subscriptions } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { ok, fail } from "@/lib/http";
 import { currentUser } from "@/lib/auth";
@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     .where(eq(memberships.communityId, c.id));
 
   // Membresía del usuario actual (si está autenticado)
-  let myMembership: { role: string; status: string; level: number; points: number } | null = null;
+  let myMembership: { role: string; status: string; level: number; points: number; accessUntil: string | null } | null = null;
   const me = await currentUser();
   if (me) {
     const [m] = await db
@@ -26,7 +26,14 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
       .from(memberships)
       .where(and(eq(memberships.communityId, c.id), eq(memberships.userId, me.id)))
       .limit(1);
-    if (m) myMembership = { role: m.role, status: m.status, level: m.level, points: m.points };
+    if (m) {
+      const [sub] = await db
+        .select({ end: subscriptions.currentPeriodEnd })
+        .from(subscriptions)
+        .where(and(eq(subscriptions.communityId, c.id), eq(subscriptions.userId, me.id)))
+        .limit(1);
+      myMembership = { role: m.role, status: m.status, level: m.level, points: m.points, accessUntil: sub?.end ? new Date(sub.end).toISOString() : null };
+    }
   }
 
   return ok({

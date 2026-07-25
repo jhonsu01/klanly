@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { db } from "@/db";
-import { users, notifications } from "@/db/schema";
+import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { currentUser } from "@/lib/auth";
 import { ok, fail } from "@/lib/http";
+import { notify } from "@/lib/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,10 +34,11 @@ export async function POST(req: Request) {
 
   const admins = await db.select({ id: users.id }).from(users).where(eq(users.platformRole, "admin"));
   for (const a of admins) {
-    await db.insert(notifications).values({
-      userId: a.id,
+    await notify(a.id, {
       type: "producer_application",
       body: `${me.displayName} (${me.email}) solicitó ser productor · plan ${parsed.data.planMonths} mes(es)${parsed.data.proofUrl ? " · adjuntó comprobante" : ""}.`,
+      emailSubject: "Nueva solicitud de productor en Klanly",
+      cta: { label: "Revisar en el panel", url: (process.env.APP_URL || "https://klanly.vercel.app") + "/admin" },
     });
   }
 

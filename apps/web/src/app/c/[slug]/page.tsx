@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, money, uploadFile } from "@/lib/api-client";
 
-type Membership = { role: string; status: string; level: number; points: number } | null;
+type Membership = { role: string; status: string; level: number; points: number; accessUntil?: string | null } | null;
 type Community = {
   id: string; slug: string; name: string; description?: string; iconUrl?: string | null;
   priceCents: number; currency: string; billingPeriod: string; isPublic?: boolean;
@@ -135,7 +135,8 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   if (!c) return <div className="container"><a href="/">← Volver</a><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
 
   const isMember = c.myMembership && c.myMembership.status === "active";
-  const isPending = c.myMembership && c.myMembership.status === "pending";
+  const isPastDue = c.myMembership && c.myMembership.status === "past_due";
+  const isPending = c.myMembership && (c.myMembership.status === "pending" || c.myMembership.status === "past_due");
   const isOwner = c.myMembership?.role === "owner";
   const isManager = isOwner || c.myMembership?.role === "admin";
   const isFree = c.priceCents === 0 || c.billingPeriod === "free";
@@ -257,7 +258,8 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       )}
       {isPending && (
         <div className="card" style={{ marginTop: 16 }}>
-          <h2>Pago manual (comprobante)</h2>
+          <h2>{isPastDue ? "Renovar acceso (comprobante)" : "Pago manual (comprobante)"}</h2>
+          {isPastDue && <div className="err" style={{ marginBottom: 6 }}>Tu acceso venció{c.myMembership?.accessUntil ? ` el ${new Date(c.myMembership.accessUntil).toLocaleDateString()}` : ""}. Renueva para recuperar el acceso.</div>}
           <div className="muted">Transfiere {money(c.priceCents, c.currency)} a una de estas cuentas y sube la foto/captura de tu comprobante:</div>
           {(c.manualAccounts && c.manualAccounts.length > 0) ? (
             <div style={{ margin: "10px 0" }}>
@@ -279,7 +281,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       )}
       {isMember && c.myMembership && (
         <div className="card" style={{ marginTop: 16 }}>
-          <div>Tu estado: <span className="pill">{c.myMembership.role}</span> · Nivel {c.myMembership.level} · {c.myMembership.points} pts</div>
+          <div>Tu estado: <span className="pill">{c.myMembership.role}</span> · Nivel {c.myMembership.level} · {c.myMembership.points} pts{c.myMembership.accessUntil && !isFree ? ` · acceso hasta ${new Date(c.myMembership.accessUntil).toLocaleDateString()}` : ""}</div>
         </div>
       )}
 

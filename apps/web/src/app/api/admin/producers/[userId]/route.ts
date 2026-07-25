@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { db } from "@/db";
-import { users, notifications } from "@/db/schema";
+import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { currentUser } from "@/lib/auth";
 import { ok, fail } from "@/lib/http";
+import { notify } from "@/lib/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,11 +38,16 @@ export async function PATCH(req: Request, { params }: { params: { userId: string
       platformRole: target.platformRole === "admin" ? "admin" : "producer",
       producerAccessUntil: accessUntil,
     }).where(eq(users.id, target.id));
-    await db.insert(notifications).values({ userId: target.id, type: "producer_approved", body: `¡Aprobado como productor! Acceso hasta ${accessUntil.toLocaleDateString()}.` });
+    await notify(target.id, {
+      type: "producer_approved",
+      body: `¡Aprobado como productor! Acceso hasta ${accessUntil.toLocaleDateString()}. Ya puedes publicar comunidades.`,
+      emailSubject: "Aprobado como productor en Klanly",
+      cta: { label: "Crear comunidad" },
+    });
     return ok({ userId: target.id, status: "approved", accessUntil });
   }
 
   await db.update(users).set({ producerStatus: "rejected" }).where(eq(users.id, target.id));
-  await db.insert(notifications).values({ userId: target.id, type: "producer_rejected", body: "Tu solicitud de productor fue rechazada." });
+  await notify(target.id, { type: "producer_rejected", body: "Tu solicitud de productor fue rechazada.", emailSubject: "Solicitud de productor rechazada" });
   return ok({ userId: target.id, status: "rejected" });
 }
