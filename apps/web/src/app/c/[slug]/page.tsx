@@ -8,8 +8,10 @@ type Community = {
   id: string; slug: string; name: string; description?: string; iconUrl?: string | null;
   priceCents: number; currency: string; billingPeriod: string; isPublic?: boolean;
   affiliateEnabled?: boolean; affiliateCommissionPct?: number; payoutTermsDays?: number;
+  manualEnabled?: boolean; manualAccounts?: { bank: string; number: string; name: string }[];
   memberCount: number; myMembership: Membership;
 };
+type Account = { bank: string; number: string; name: string };
 type Applicant = { userId: string; code: string; status: string; displayName: string; handle: string };
 type AffPayout = { id: string; amountCents: number; currency: string; method?: string; status: string; payeeName: string };
 type Post = { id: string; title?: string; body?: string; likeCount: number; authorName: string };
@@ -52,6 +54,8 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [evForm, setEvForm] = useState({ title: "", startsAt: "", linkUrl: "" });
   const [busy, setBusy] = useState(false);
   const [settings, setSettings] = useState({ name: "", description: "", priceUsd: "0", iconUrl: "", isPublic: true, affiliateEnabled: false, commissionPct: "0", payoutTermsDays: 30 });
+  const [manualEnabled, setManualEnabled] = useState(true);
+  const [manualAccounts, setManualAccounts] = useState<Account[]>([]);
   const [openPost, setOpenPost] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, { id: string; body: string; authorName: string }[]>>({});
   const [commentText, setCommentText] = useState("");
@@ -73,6 +77,8 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         affiliateEnabled: com.affiliateEnabled ?? false, commissionPct: String(com.affiliateCommissionPct ?? 0),
         payoutTermsDays: com.payoutTermsDays ?? 30,
       });
+      setManualEnabled(com.manualEnabled ?? true);
+      setManualAccounts(com.manualAccounts ?? []);
       const [p, cs, ms] = await Promise.all([
         api(`/communities/${slug}/posts`).catch(() => []),
         api(`/communities/${slug}/courses`).catch(() => []),
@@ -161,6 +167,8 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         affiliateEnabled: settings.affiliateEnabled,
         affiliateCommissionPct: parseFloat(settings.commissionPct || "0"),
         payoutTermsDays: settings.payoutTermsDays,
+        manualEnabled,
+        manualAccounts: manualAccounts.filter((a) => a.bank || a.number || a.name),
       });
       flash("Comunidad actualizada ✔"); load();
     } catch (e: any) { flash(e.message, false); }
@@ -245,7 +253,19 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       {isPending && (
         <div className="card" style={{ marginTop: 16 }}>
           <h2>Pago manual (comprobante)</h2>
-          <div className="muted">Transfiere {money(c.priceCents, c.currency)} y sube la foto/captura de tu comprobante. El productor lo revisará.</div>
+          <div className="muted">Transfiere {money(c.priceCents, c.currency)} a una de estas cuentas y sube la foto/captura de tu comprobante:</div>
+          {(c.manualAccounts && c.manualAccounts.length > 0) ? (
+            <div style={{ margin: "10px 0" }}>
+              {c.manualAccounts.map((a, i) => (
+                <div key={i} className="row" style={{ padding: "8px 0" }}>
+                  <div><b>{a.bank}</b> · {a.number}<div className="muted">{a.name}</div></div>
+                  <button className="ghost" style={{ marginTop: 0, fontSize: 12, padding: "4px 10px" }} onClick={() => { navigator.clipboard?.writeText(a.number); flash("Número copiado ✔"); }}>Copiar</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="muted" style={{ margin: "8px 0" }}>El productor aún no configuró cuentas de transferencia.</div>
+          )}
           <label>Comprobante (imagen)</label>
           <input type="file" accept="image/*" onChange={(e) => uploadProof(e.target.files?.[0])} />
           {proofUrl && <img src={proofUrl} alt="comprobante" style={{ maxWidth: 220, borderRadius: 8, marginTop: 8, display: "block" }} />}
@@ -449,7 +469,27 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
               <option value={60}>Net 60 días</option>
             </select>
           </div>
-          <button onClick={saveSettings} disabled={busy}>Guardar cambios</button>
+
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ fontSize: 15 }}>🏦 Transferencia manual</h2>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                <input type="checkbox" style={{ width: "auto" }} checked={manualEnabled} onChange={(e) => setManualEnabled(e.target.checked)} />
+                Habilitar
+              </label>
+            </div>
+            <div className="muted" style={{ marginBottom: 8 }}>El usuario transfiere y sube comprobante; tú apruebas. Estas cuentas se le muestran al elegir transferencia. Máximo 8.</div>
+            {manualAccounts.map((a, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                <input style={{ flex: 1, minWidth: 90 }} placeholder="Banco (Nequi, BreB…)" value={a.bank} onChange={(e) => setManualAccounts(manualAccounts.map((x, j) => j === i ? { ...x, bank: e.target.value } : x))} />
+                <input style={{ flex: 1, minWidth: 90 }} placeholder="Número / llave" value={a.number} onChange={(e) => setManualAccounts(manualAccounts.map((x, j) => j === i ? { ...x, number: e.target.value } : x))} />
+                <input style={{ flex: 1, minWidth: 90 }} placeholder="Titular" value={a.name} onChange={(e) => setManualAccounts(manualAccounts.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                <button className="ghost" style={{ marginTop: 0, color: "#ffb4c4" }} onClick={() => setManualAccounts(manualAccounts.filter((_, j) => j !== i))}>✕</button>
+              </div>
+            ))}
+            {manualAccounts.length < 8 && <button className="ghost" style={{ marginTop: 0 }} onClick={() => setManualAccounts([...manualAccounts, { bank: "", number: "", name: "" }])}>+ Agregar cuenta</button>}
+          </div>
+          <button onClick={saveSettings} disabled={busy}>Guardar configuración</button>
         </div>
       )}
 

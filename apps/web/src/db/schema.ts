@@ -52,6 +52,9 @@ export const communities = pgTable(
     affiliateEnabled: boolean("affiliate_enabled").notNull().default(false),
     affiliateCommissionPct: numeric("affiliate_commission_pct", { precision: 5, scale: 2 }).notNull().default("0"),
     payoutTermsDays: integer("payout_terms_days").notNull().default(30), // 30 | 60
+    // Transferencia manual: cuentas que ve el miembro al pagar (banco/número/titular)
+    manualEnabled: boolean("manual_enabled").notNull().default(true),
+    manualAccounts: jsonb("manual_accounts").$type<{ bank: string; number: string; name: string }[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
