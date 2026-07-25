@@ -117,9 +117,14 @@ export default function AdminPage() {
             {pendingProducers.length === 0 && <div className="muted">Sin solicitudes pendientes.</div>}
             {pendingProducers.map((p) => (
               <div className="row" key={p.id}>
-                <div>
-                  <a href={`/u/${p.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{p.displayName}</a>
-                  <div className="muted">{p.email}{p.planMonths ? ` · plan ${p.planMonths} mes(es)` : ""}{p.proofUrl ? <> · <a href={p.proofUrl} target="_blank" rel="noreferrer">ver comprobante</a></> : " · sin comprobante"}</div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  {p.proofUrl
+                    ? <a href={p.proofUrl} target="_blank" rel="noreferrer"><img src={p.proofUrl} alt="comprobante" style={{ height: 56, width: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /></a>
+                    : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
+                  <div>
+                    <a href={`/u/${p.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{p.displayName}</a>
+                    <div className="muted">{p.email}{p.planMonths ? ` · plan ${p.planMonths} mes(es)` : ""}</div>
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => reviewProducer(p.id, "approve")}>Aprobar</button>
@@ -140,7 +145,12 @@ export default function AdminPage() {
             {proofs.length === 0 && <div className="muted">Nada pendiente.</div>}
             {proofs.map((o) => (
               <div className="row" key={o.id}>
-                <div>{o.userEmail} · {o.communityName}<div className="muted">{money(o.amountCents, o.currency)}{o.proofUrl && <> · <a href={o.proofUrl} target="_blank" rel="noreferrer">ver comprobante</a></>}</div></div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  {o.proofUrl
+                    ? <a href={o.proofUrl} target="_blank" rel="noreferrer"><img src={o.proofUrl} alt="comprobante" style={{ height: 56, width: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /></a>
+                    : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
+                  <div>{o.userEmail}<div className="muted">{o.communityName} · {money(o.amountCents, o.currency)}</div></div>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => reviewProof(o.id, "approve")}>Aprobar</button>
                   <button className="ghost" style={{ marginTop: 0 }} onClick={() => reviewProof(o.id, "reject")}>Rechazar</button>

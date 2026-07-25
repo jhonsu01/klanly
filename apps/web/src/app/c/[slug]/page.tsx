@@ -598,7 +598,12 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
           {pending.length === 0 && <div className="muted">Nada pendiente.</div>}
           {pending.map((o) => (
             <div className="row" key={o.id}>
-              <div><div>{o.userEmail} · {money(o.amountCents, o.currency)}</div>{o.proofUrl && <a href={o.proofUrl} target="_blank" rel="noreferrer">ver comprobante</a>}</div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                {o.proofUrl
+                  ? <a href={o.proofUrl} target="_blank" rel="noreferrer"><img src={o.proofUrl} alt="comprobante" style={{ height: 56, width: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} /></a>
+                  : <div style={{ height: 56, width: 56, borderRadius: 8, border: "1px dashed var(--border)", display: "grid", placeItems: "center", fontSize: 10, color: "var(--muted)" }}>sin img</div>}
+                <div>{o.userEmail}<div className="muted">{money(o.amountCents, o.currency)}</div></div>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => review(o.id, "approve")}>Aprobar</button>
                 <button className="ghost" style={{ marginTop: 0 }} onClick={() => review(o.id, "reject")}>Rechazar</button>

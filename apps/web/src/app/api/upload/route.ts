@@ -5,34 +5,40 @@ import { ok, fail } from "@/lib/http";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX = 4 * 1024 * 1024; // 4 MB (límite práctico del body serverless de Vercel)
+const MAX_BLOB = 4 * 1024 * 1024;      // 4 MB con Vercel Blob
+const MAX_INLINE = 1_500_000;          // 1.5 MB si se guarda inline (base64) sin Blob
 const ALLOWED = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
 
 /**
- * Sube una imagen (comprobante, portada de curso, avatar) a Vercel Blob y
- * devuelve su URL pública. Requiere BLOB_READ_WRITE_TOKEN (se crea al habilitar
- * "Storage → Blob" en el proyecto de Vercel).
+ * Sube una imagen (comprobante, portada, avatar) y devuelve su URL.
+ * - Si hay Vercel Blob (BLOB_READ_WRITE_TOKEN): sube y devuelve URL pública.
+ * - Si NO hay Blob: la guarda como data URL (base64) para que el comprobante
+ *   funcione igual y se pueda VER en línea (reciclado de la idea de rifas:
+ *   subir → el admin ve el comprobante → aprueba). Ideal habilitar Blob en prod.
  */
 export async function POST(req: Request) {
   const me = await currentUser();
   if (!me) return fail("No autenticado", 401);
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return fail("Almacenamiento no configurado. Habilita 'Storage → Blob' en Vercel.", 503);
-  }
-
-  const folder = new URL(req.url).searchParams.get("folder") ?? "uploads";
-  const safeFolder = ["proofs", "covers", "avatars", "uploads"].includes(folder) ? folder : "uploads";
-
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return fail("Archivo faltante", 400);
-  if (file.size > MAX) return fail("La imagen supera 4 MB", 413);
   if (!ALLOWED.includes(file.type)) return fail("Solo imágenes (png, jpg, webp, gif)", 415);
 
-  const ext = (file.name.split(".").pop() || "png").toLowerCase();
-  const key = `${safeFolder}/${me.id}-${Date.now()}.${ext}`;
+  const hasBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 
-  const blob = await put(key, file, { access: "public", addRandomSuffix: true });
-  return ok({ url: blob.url });
+  if (hasBlob) {
+    if (file.size > MAX_BLOB) return fail("La imagen supera 4 MB", 413);
+    const folder = new URL(req.url).searchParams.get("folder") ?? "uploads";
+    const safeFolder = ["proofs", "covers", "avatars", "uploads"].includes(folder) ? folder : "uploads";
+    const ext = (file.name.split(".").pop() || "png").toLowerCase();
+    const blob = await put(`${safeFolder}/${me.id}-${Date.now()}.${ext}`, file, { access: "public", addRandomSuffix: true });
+    return ok({ url: blob.url });
+  }
+
+  // Fallback sin Blob: data URL (base64)
+  if (file.size > MAX_INLINE) return fail("Sin almacenamiento configurado: la imagen debe pesar menos de 1.5 MB.", 413);
+  const buf = Buffer.from(await file.arrayBuffer());
+  const dataUrl = `data:${file.type};base64,${buf.toString("base64")}`;
+  return ok({ url: dataUrl });
 }

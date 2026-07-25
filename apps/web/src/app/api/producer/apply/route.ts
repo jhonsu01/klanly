@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({
   planMonths: z.number().int().min(1).max(60),
-  proofUrl: z.string().url().optional(),
+  proofUrl: z.string().regex(/^(https?:|data:image\/)/).optional(),
 });
 
 /**

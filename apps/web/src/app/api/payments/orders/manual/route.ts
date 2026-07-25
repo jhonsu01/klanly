@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const Body = z.object({
   communityId: z.string().uuid(),
-  proofUrl: z.string().url(), // URL del comprobante (subido a Blob/almacenamiento)
+  proofUrl: z.string().regex(/^(https?:|data:image\/)/, "Comprobante inválido"), // URL o data URL (base64)
   note: z.string().max(300).optional(),
   referralCode: z.string().max(40).optional(), // F4: link de afiliado usado
 });
