@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, money, uploadFile } from "@/lib/api-client";
+import { getPusherClient, realtimeEnabled } from "@/lib/pusher-client";
 
 type Membership = { role: string; status: string; level: number; points: number; accessUntil?: string | null } | null;
 type Community = {
@@ -67,6 +68,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [myAff, setMyAff] = useState<{ code: string; status: string } | null>(null);
   const [refCode, setRefCode] = useState<string | null>(null);
   const [income, setIncome] = useState<Income | null>(null);
+  const [meId, setMeId] = useState<string | null>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -89,6 +91,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       ]);
       setPosts(p); setCourses(cs); setMembers(ms);
       api(`/notifications`).then(setNotis).catch(() => {});
+      api(`/auth/me`).then((m) => setMeId(m.id)).catch(() => {});
       // Mi cuenta de afiliado en esta comunidad
       if (com.myMembership) {
         api(`/affiliates/me`).then((d) => {
@@ -124,13 +127,31 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   // Polling del chat
   const chatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    if (tab === "chat" && c) {
+    // Fallback por polling solo si NO hay realtime configurado
+    if (tab === "chat" && c && !realtimeEnabled()) {
       chatRef.current = setInterval(() => {
         api(`/communities/${slug}/messages`).then(setMessages).catch(() => {});
       }, 4000);
       return () => { if (chatRef.current) clearInterval(chatRef.current); };
     }
   }, [tab, c, slug]);
+
+  // Realtime (Pusher): chat en vivo + campana de notificaciones
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher || !c) return;
+    const comCh = pusher.subscribe(`community-${c.id}`);
+    comCh.bind("message", () => { api(`/communities/${slug}/messages`).then(setMessages).catch(() => {}); });
+    let userCh: ReturnType<typeof pusher.subscribe> | null = null;
+    if (meId) {
+      userCh = pusher.subscribe(`user-${meId}`);
+      userCh.bind("notification", () => { api(`/notifications`).then(setNotis).catch(() => {}); });
+    }
+    return () => {
+      comCh.unbind_all(); pusher.unsubscribe(`community-${c.id}`);
+      if (meId) { userCh?.unbind_all(); pusher.unsubscribe(`user-${meId}`); }
+    };
+  }, [c, meId, slug]);
 
   if (!c) return <div className="container"><a href="/">← Volver</a><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
 

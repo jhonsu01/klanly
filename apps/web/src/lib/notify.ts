@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { notifications, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { sendEmail, emailTemplate } from "./mailer";
+import { trigger } from "./pusher";
 
 const APP_URL = process.env.APP_URL || "https://klanly.vercel.app";
 
@@ -19,6 +20,9 @@ export async function notify(
     type: opts.type,
     body: opts.body,
   });
+
+  // Tiempo real (campana)
+  await trigger(`user-${userId}`, "notification", { type: opts.type, body: opts.body });
 
   if (opts.emailSubject) {
     const [u] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);

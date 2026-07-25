@@ -12,7 +12,7 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
-    serverComponentsExternalPackages: ["@neondatabase/serverless", "bcryptjs", "nodemailer"],
+    serverComponentsExternalPackages: ["@neondatabase/serverless", "bcryptjs", "nodemailer", "pusher"],
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

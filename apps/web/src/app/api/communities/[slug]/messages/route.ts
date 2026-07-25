@@ -5,6 +5,7 @@ import { asc, eq } from "drizzle-orm";
 import { currentUser } from "@/lib/auth";
 import { ok, fail } from "@/lib/http";
 import { resolveCommunity, getMembership } from "@/lib/community";
+import { trigger } from "@/lib/pusher";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,10 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     .insert(messages)
     .values({ communityId: c.id, authorId: me.id, body: parsed.data.body })
     .returning();
+
+  await trigger(`community-${c.id}`, "message", {
+    id: msg.id, body: msg.body, authorName: me.displayName, authorHandle: me.handle, createdAt: msg.createdAt,
+  });
 
   return ok(msg, 201);
 }
