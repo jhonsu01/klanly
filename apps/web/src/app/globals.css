@@ -66,3 +66,20 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .out { margin-top: 12px; font-size: 12px; color: var(--muted); white-space: pre-wrap; word-break: break-word; }
 .err { color: var(--red); }
 .ok { color: var(--green); }
+
+/* ===== Consola admin (sidebar) ===== */
+.admin-shell { display: flex; min-height: 100vh; }
+.admin-side { width: 240px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--border); padding: 20px 12px; }
+.admin-main { flex: 1; padding: 28px 32px; overflow-y: auto; max-width: 1100px; }
+.admin-nav a { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 8px; color: var(--muted); cursor: pointer; font-size: 14px; margin-bottom: 2px; white-space: nowrap; }
+.admin-nav a.active, .admin-nav a:hover { background: var(--surface2); color: var(--text); }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.stat .v { font-size: 28px; font-weight: 700; margin-top: 6px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+@media (max-width: 760px) {
+  .admin-shell { flex-direction: column; }
+  .admin-side { width: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  .admin-nav { display: flex; overflow-x: auto; gap: 4px; }
+  .admin-main { padding: 20px 16px; }
+}
