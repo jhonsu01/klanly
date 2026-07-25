@@ -61,6 +61,10 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
   const current = d.lessons.find((l) => l.id === sel) || null;
   const video = parseVideo(current?.videoUrl);
+  const idx = d.lessons.findIndex((l) => l.id === sel);
+  const prevLesson = idx > 0 ? d.lessons[idx - 1] : null;
+  const nextLesson = idx >= 0 && idx < d.lessons.length - 1 ? d.lessons[idx + 1] : null;
+  const goto = (id?: string) => { if (id) { setSel(id); setEditing(null); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); } };
 
   const onPickImage = async (file: File | undefined, apply: (url: string) => void) => {
     if (!file) return;
@@ -157,7 +161,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         </div>
       )}
 
-      <div className="grid" style={{ marginTop: 16, gridTemplateColumns: "320px 1fr" }}>
+      <div className="course-grid" style={{ marginTop: 16 }}>
         <div className="card" style={{ alignSelf: "start" }}>
           {d.lessons.length === 0 && <div className="muted">Este curso aún no tiene lecciones.</div>}
           {modules.map((mod) => (
@@ -214,6 +218,13 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                   {d.isMember && <button onClick={() => complete(current.id)} disabled={current.completed} style={{ background: current.completed ? "var(--surface2)" : undefined }}>{current.completed ? "✅ Completada" : "Marcar como completada"}</button>}
                 </div>
               )}
+
+              {/* Navegación entre lecciones */}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 18, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                <button className="ghost" style={{ marginTop: 0, visibility: prevLesson ? "visible" : "hidden" }} onClick={() => goto(prevLesson?.id)}>← Anterior</button>
+                <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>{idx + 1} / {d.lessons.length}</span>
+                <button className="ghost" style={{ marginTop: 0, visibility: nextLesson ? "visible" : "hidden" }} onClick={() => goto(nextLesson?.id)}>Siguiente →</button>
+              </div>
             </>
           )}
         </div>

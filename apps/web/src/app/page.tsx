@@ -176,7 +176,12 @@ export default function Home() {
               {adminAccounts.length > 0 && (
                 <div style={{ marginBottom: 8 }}>
                   <div className="muted">Paga a:</div>
-                  {adminAccounts.map((a, i) => (<div key={i} className="row" style={{ padding: "6px 0" }}><div><b>{a.bank}</b> · {a.number}<div className="muted">{a.name}</div></div></div>))}
+                  {adminAccounts.map((a, i) => (
+                    <div key={i} className="row" style={{ padding: "6px 0" }}>
+                      <div><b>{a.bank}</b> · {a.number}<div className="muted">{a.name}</div></div>
+                      <button className="ghost" style={{ marginTop: 0, fontSize: 12, padding: "4px 10px" }} onClick={() => { navigator.clipboard?.writeText(a.number); flash("Número copiado ✔"); }}>Copiar</button>
+                    </div>
+                  ))}
                 </div>
               )}
               <label>Comprobante (imagen, opcional)</label>
