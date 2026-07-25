@@ -7,6 +7,10 @@
 [![Release](https://github.com/jhonsu01/klanly/actions/workflows/release.yml/badge.svg)](https://github.com/jhonsu01/klanly/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/jhonsu01/klanly?display_name=tag)](https://github.com/jhonsu01/klanly/releases/latest)
 
+Proyecto **open source** y gratuito. Si te sirve, apóyame:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V81LV7GX)
+
 </div>
 
 ---
@@ -88,6 +92,14 @@ python scripts/gen_icons.py
 
 Esto actualiza la versión en todos los manifiestos, crea el tag `v0.2.0` y lo empuja.
 GitHub Actions compila los binarios, publica la Release y borra la anterior.
+
+---
+
+## Apoyo ☕
+
+Klanly es gratuito y open source. Si te resulta útil, puedes apoyar su desarrollo:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V81LV7GX)
 
 ---
 

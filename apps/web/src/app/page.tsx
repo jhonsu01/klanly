@@ -206,10 +206,15 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="out">
-        API activa: <code>/api/auth/*</code>, <code>/api/communities</code>, <code>/api/payments/*</code>, <code>/api/webhooks/wompi</code>.
-        {" "}Fase F0 (auth + comunidades) y F1 (pagos Wompi + manual) listas.
-      </div>
+      <footer style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid var(--border)", textAlign: "center" }}>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Klanly es un proyecto <b>open source</b> y gratuito. Si te sirve, apóyame con un café ☕</div>
+        <a href="https://ko-fi.com/V7V81LV7GX" target="_blank" rel="noreferrer">
+          <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Apóyame en Ko-fi" style={{ height: 36 }} />
+        </a>
+        <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+          <a href="https://github.com/jhonsu01/klanly" target="_blank" rel="noreferrer" style={{ color: "var(--muted)" }}>Código en GitHub</a>
+        </div>
+      </footer>
     </div>
   );
 }
