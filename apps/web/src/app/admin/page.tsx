@@ -60,7 +60,20 @@ export default function AdminPage() {
   const start2fa = async () => { try { setTwoFaSetup(await api(`/auth/2fa/setup`, "POST")); } catch (e: any) { flash(e.message, false); } };
   const enable2fa = async () => { try { await api(`/auth/2fa/enable`, "POST", { secret: twoFaSetup!.secret, code }); setTwoFaSetup(null); setCode(""); setMe({ ...me!, twoFactorEnabled: true }); flash("2FA activado ✔"); } catch (e: any) { flash(e.message, false); } };
   const disable2fa = async () => { try { await api(`/auth/2fa/disable`, "POST", { code }); setCode(""); setMe({ ...me!, twoFactorEnabled: false }); flash("2FA desactivado"); } catch (e: any) { flash(e.message, false); } };
-  const changePwd = async () => { try { await api(`/auth/change-password`, "POST", { currentPassword: pwd.current, newPassword: pwd.next }); setPwd({ current: "", next: "" }); flash("Contraseña actualizada ✔"); } catch (e: any) { flash(e.message, false); } };
+  const changePwd = async () => {
+    try {
+      if (!pwd.current || pwd.next.length < 8) { flash("La nueva contraseña debe tener 8+ caracteres", false); return; }
+      const { method } = await api(`/auth/request-code`, "POST");
+      const promptMsg = method === "totp"
+        ? "Ingresa el código de 6 dígitos de tu app de autenticación (2FA):"
+        : "Te enviamos un código de 6 dígitos a tu correo. Ingrésalo para confirmar:";
+      const code = (window.prompt(promptMsg) || "").trim();
+      if (!code) return;
+      await api(`/auth/change-password`, "POST", { currentPassword: pwd.current, newPassword: pwd.next, code });
+      setPwd({ current: "", next: "" });
+      flash("Contraseña actualizada ✔");
+    } catch (e: any) { flash(e.message, false); }
+  };
   const logout = async () => { await api(`/auth/logout`, "POST").catch(() => {}); window.location.href = "/"; };
 
   const pendingProducers = producers.filter((p) => p.producerStatus === "pending");
