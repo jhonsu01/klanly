@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, uploadFile } from "@/lib/api-client";
+import FilePicker from "@/components/FilePicker";
 import { parseVideo } from "@/lib/video";
 
 type Lesson = {
@@ -139,8 +140,14 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           <label>Descripción</label>
           <textarea rows={2} value={cForm.description} onChange={(e) => setCForm({ ...cForm, description: e.target.value })} />
           <label>Portada (imagen)</label>
-          <input type="file" accept="image/*" onChange={(e) => onPickImage(e.target.files?.[0], (url) => setCForm({ ...cForm, coverUrl: url }))} />
-          {cForm.coverUrl && <img src={cForm.coverUrl} alt="" style={{ width: 160, borderRadius: 8, marginTop: 8 }} />}
+          <FilePicker
+            label="Subir portada"
+            hint="Horizontal (16:9) se ve mejor"
+            value={cForm.coverUrl || undefined}
+            busy={busy}
+            onPick={(f) => onPickImage(f, (url) => setCForm({ ...cForm, coverUrl: url }))}
+            onClear={() => setCForm({ ...cForm, coverUrl: "" })}
+          />
           <div><button onClick={saveCourse} disabled={busy}>Guardar curso</button></div>
         </div>
       )}

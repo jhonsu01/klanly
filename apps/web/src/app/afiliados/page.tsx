@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, money } from "@/lib/api-client";
+import { api, money, askStepUp } from "@/lib/api-client";
 
 type Account = { communityId: string; slug: string; name: string; code: string; status: string; commissionPct: number; payoutTermsDays: number };
 type Balance = { pendingCents: number; availableCents: number; requestedCents: number; paidCents: number };
@@ -29,7 +29,15 @@ export default function AffiliatesPage() {
 
   if (!d) return <div className="container"><a href="/" className="muted">← Volver</a><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
 
-  const savePm = async () => { try { await api(`/affiliates/payout-method`, "POST", pm); flash("Medio de pago guardado ✔"); load(); } catch (e: any) { flash(e.message, false); } };
+  const savePm = async () => {
+    try {
+      const code = await askStepUp("el cambio de tu medio de pago");
+      if (!code) return;
+      await api(`/affiliates/payout-method`, "POST", { ...pm, code });
+      flash("Medio de pago guardado ✔");
+      load();
+    } catch (e: any) { flash(e.message, false); }
+  };
   const requestPayout = async (communityId: string) => { try { const r = await api(`/affiliates/payouts`, "POST", { communityId }); flash(`Payout solicitado: ${money(r.amountCents, r.currency)}. El productor debe autorizarlo.`); load(); } catch (e: any) { flash(e.message, false); } };
   const copy = (code: string, slug: string) => { const link = `${window.location.origin}/c/${slug}?ref=${code}`; navigator.clipboard?.writeText(link); flash("Link copiado ✔"); };
 

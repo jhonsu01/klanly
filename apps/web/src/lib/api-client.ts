@@ -11,6 +11,20 @@ export async function api(path: string, method = "GET", body?: unknown) {
   return json.data;
 }
 
+/**
+ * Pide la confirmación "step-up" para una acción sensible.
+ * Si el usuario tiene 2FA pide el código de su app; si no, el servidor le envía
+ * un PIN al correo y aquí se lo pedimos. Devuelve null si cancela.
+ */
+export async function askStepUp(accion = "este cambio"): Promise<string | null> {
+  const { method } = await api("/auth/request-code", "POST");
+  const msg = method === "totp"
+    ? `Para confirmar ${accion}, ingresa el código de 6 dígitos de tu app de autenticación (2FA):`
+    : `Para confirmar ${accion} te enviamos un código de 6 dígitos a tu correo. Ingrésalo:`;
+  const code = (window.prompt(msg) || "").trim();
+  return code.length === 6 ? code : null;
+}
+
 export function money(cents: number, currency = "USD") {
   const amount = cents / 100;
   if (currency === "COP") return `$${Math.round(amount).toLocaleString("es-CO")} COP`;
@@ -19,9 +33,12 @@ export function money(cents: number, currency = "USD") {
 }
 
 // Sube una imagen a /api/upload y devuelve su URL pública.
+// Comprime en el navegador antes de enviar (fotos de celular / HEIC del iPhone).
 export async function uploadFile(file: File, folder = "uploads"): Promise<string> {
+  const { compressImage } = await import("@/lib/image");
+  const small = await compressImage(file);
   const fd = new FormData();
-  fd.append("file", file);
+  fd.append("file", small);
   const res = await fetch(`/api/upload?folder=${folder}`, { method: "POST", body: fd });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error || `Error ${res.status}`);

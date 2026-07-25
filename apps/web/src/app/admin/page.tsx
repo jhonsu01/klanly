@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, money } from "@/lib/api-client";
+import { api, money, askStepUp } from "@/lib/api-client";
 
 type Me = { handle: string; role: string; displayName?: string; email?: string; twoFactorEnabled?: boolean } | null;
 type Overview = { communities: number; users: number; pendingProducers: number; pendingProofs: number; pendingPayouts: number; grossRevenueCents: number };
@@ -56,20 +56,23 @@ export default function AdminPage() {
   const reviewProducer = async (id: string, d: "approve" | "reject") => { try { await api(`/admin/producers/${id}`, "PATCH", { decision: d }); flash(d === "approve" ? "Productor aprobado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };
   const reviewProof = async (id: string, d: "approve" | "reject") => { try { await api(`/payments/orders/${id}/review`, "POST", { decision: d }); flash(d === "approve" ? "Aprobado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };
   const reviewPayout = async (id: string, d: "approve" | "reject") => { try { await api(`/payouts/${id}`, "PATCH", { decision: d }); flash(d === "approve" ? "Payout pagado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };
-  const saveSettings = async () => { try { await api(`/admin/settings`, "POST", { adminAccounts: accounts.filter((a) => a.bank || a.number || a.name), producerPlans: plans }); flash("Configuración guardada ✔"); } catch (e: any) { flash(e.message, false); } };
+  const saveSettings = async () => {
+    try {
+      const stepCode = await askStepUp("los cambios en cuentas y planes de cobro");
+      if (!stepCode) return;
+      await api(`/admin/settings`, "POST", { adminAccounts: accounts.filter((a) => a.bank || a.number || a.name), producerPlans: plans, code: stepCode });
+      flash("Configuración guardada ✔");
+    } catch (e: any) { flash(e.message, false); }
+  };
   const start2fa = async () => { try { setTwoFaSetup(await api(`/auth/2fa/setup`, "POST")); } catch (e: any) { flash(e.message, false); } };
   const enable2fa = async () => { try { await api(`/auth/2fa/enable`, "POST", { secret: twoFaSetup!.secret, code }); setTwoFaSetup(null); setCode(""); setMe({ ...me!, twoFactorEnabled: true }); flash("2FA activado ✔"); } catch (e: any) { flash(e.message, false); } };
   const disable2fa = async () => { try { await api(`/auth/2fa/disable`, "POST", { code }); setCode(""); setMe({ ...me!, twoFactorEnabled: false }); flash("2FA desactivado"); } catch (e: any) { flash(e.message, false); } };
   const changePwd = async () => {
     try {
       if (!pwd.current || pwd.next.length < 8) { flash("La nueva contraseña debe tener 8+ caracteres", false); return; }
-      const { method } = await api(`/auth/request-code`, "POST");
-      const promptMsg = method === "totp"
-        ? "Ingresa el código de 6 dígitos de tu app de autenticación (2FA):"
-        : "Te enviamos un código de 6 dígitos a tu correo. Ingrésalo para confirmar:";
-      const code = (window.prompt(promptMsg) || "").trim();
-      if (!code) return;
-      await api(`/auth/change-password`, "POST", { currentPassword: pwd.current, newPassword: pwd.next, code });
+      const stepCode = await askStepUp("el cambio de contraseña");
+      if (!stepCode) return;
+      await api(`/auth/change-password`, "POST", { currentPassword: pwd.current, newPassword: pwd.next, code: stepCode });
       setPwd({ current: "", next: "" });
       flash("Contraseña actualizada ✔");
     } catch (e: any) { flash(e.message, false); }

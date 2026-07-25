@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, uploadFile } from "@/lib/api-client";
+import FilePicker from "@/components/FilePicker";
 
 type Com = { slug: string; name: string; role: string; level: number; points: number };
 type Profile = {
@@ -80,8 +81,14 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
               <label>País</label>
               <input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
               <label>Avatar</label>
-              <input type="file" accept="image/*" onChange={(e) => uploadAvatar(e.target.files?.[0])} />
-              {form.avatarUrl && <img src={form.avatarUrl} alt="" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", marginTop: 8, display: "block" }} />}
+              <FilePicker
+                label="Subir avatar"
+                hint="Cuadrado se ve mejor"
+                value={form.avatarUrl || undefined}
+                busy={busy}
+                onPick={(f) => uploadAvatar(f)}
+                onClear={() => setForm((v) => ({ ...v, avatarUrl: "" }))}
+              />
               <button onClick={save} disabled={busy}>Guardar</button>
             </div>
           )}

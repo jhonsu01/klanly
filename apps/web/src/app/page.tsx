@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, uploadFile, money } from "@/lib/api-client";
+import FilePicker from "@/components/FilePicker";
 
 type Me = { id: string; email: string; displayName: string; handle: string; role: string; emailVerified?: boolean; producerStatus?: string; producerAccessUntil?: string | null } | null;
 type Community = {
@@ -211,8 +212,14 @@ export default function Home() {
                 </div>
               )}
               <label>Comprobante (imagen, opcional)</label>
-              <input type="file" accept="image/*" onChange={(e) => uploadProof(e.target.files?.[0])} />
-              {prodProof && <img src={prodProof} alt="" style={{ maxWidth: 160, borderRadius: 8, marginTop: 8, display: "block" }} />}
+              <FilePicker
+                label="Adjuntar comprobante"
+                hint="Foto o captura de la transferencia"
+                value={prodProof || undefined}
+                busy={busy}
+                onPick={(f) => uploadProof(f)}
+                onClear={() => setProdProof("")}
+              />
               <button onClick={applyProducer} disabled={!selPlan || busy}>Enviar solicitud</button>
               {me.producerStatus === "rejected" && <div className="out err" style={{ marginTop: 8 }}>Tu solicitud anterior fue rechazada.</div>}
             </>

@@ -4,6 +4,7 @@ import { communities, memberships, subscriptions, paymentOrders } from "@/db/sch
 import { and, desc, eq, sql } from "drizzle-orm";
 import { ok, fail } from "@/lib/http";
 import { currentUser } from "@/lib/auth";
+import { verifyStepUp } from "@/lib/stepup";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +87,7 @@ const PatchBody = z.object({
     number: z.string().max(60),
     name: z.string().max(80),
   })).max(8).optional(),
+  code: z.string().min(6).max(6).optional(), // step-up: requerido solo al tocar medios de pago
 });
 
 // Editar la comunidad (solo owner o admin de plataforma)
@@ -108,6 +110,13 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
   if (!parsed.success) return fail("Datos inválidos", 422, { issues: parsed.error.issues });
 
   const b = parsed.data;
+
+  // Cambiar las cuentas donde reciben el dinero es sensible → exige confirmación.
+  if (b.manualAccounts !== undefined) {
+    const stepOk = await verifyStepUp(me, b.code);
+    if (!stepOk) return fail("Para cambiar las cuentas de pago confirma con el código (correo o 2FA).", 400, { needsCode: true });
+  }
+
   const patch: Record<string, unknown> = {};
   if (b.name !== undefined) patch.name = b.name;
   if (b.description !== undefined) patch.description = b.description;

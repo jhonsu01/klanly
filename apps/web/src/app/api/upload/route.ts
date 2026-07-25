@@ -23,7 +23,15 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return fail("Archivo faltante", 400);
-  if (!ALLOWED.includes(file.type)) return fail("Solo imágenes (png, jpg, webp, gif)", 415);
+  if (!ALLOWED.includes(file.type)) {
+    const isHeic = /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+    return fail(
+      isHeic
+        ? "Ese formato de foto (HEIC del iPhone) no es compatible. En tu iPhone: Ajustes → Cámara → Formatos → 'Más compatible', o toma una captura de pantalla de la foto y súbela."
+        : "Solo imágenes (png, jpg, webp, gif).",
+      415,
+    );
+  }
 
   const hasBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, money, uploadFile } from "@/lib/api-client";
+import { api, money, uploadFile, askStepUp } from "@/lib/api-client";
+import FilePicker from "@/components/FilePicker";
 import { getPusherClient, realtimeEnabled } from "@/lib/pusher-client";
 
 type Membership = { role: string; status: string; level: number; points: number; accessUntil?: string | null } | null;
@@ -186,6 +187,14 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   };
   const saveSettings = async () => {
     try {
+      const cleanAccounts = manualAccounts.filter((a) => a.bank || a.number || a.name);
+      // Las cuentas de pago son sensibles: solo se envían (y piden confirmación) si cambiaron.
+      const accountsChanged = JSON.stringify(cleanAccounts) !== JSON.stringify(c.manualAccounts ?? []);
+      let code: string | null = null;
+      if (accountsChanged) {
+        code = await askStepUp("el cambio de tus cuentas de pago");
+        if (!code) return;
+      }
       await api(`/communities/${c.slug}`, "PATCH", {
         name: settings.name, description: settings.description,
         priceCents: Math.round(parseFloat(settings.priceUsd || "0") * 100),
@@ -195,7 +204,7 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         affiliateCommissionPct: parseFloat(settings.commissionPct || "0"),
         payoutTermsDays: settings.payoutTermsDays,
         manualEnabled,
-        manualAccounts: manualAccounts.filter((a) => a.bank || a.number || a.name),
+        ...(accountsChanged ? { manualAccounts: cleanAccounts, code } : {}),
       });
       flash("Comunidad actualizada ✔"); load();
     } catch (e: any) { flash(e.message, false); }
@@ -301,8 +310,14 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
             <div className="muted" style={{ margin: "8px 0" }}>El productor aún no configuró cuentas de transferencia.</div>
           )}
           <label>Comprobante (imagen)</label>
-          <input type="file" accept="image/*" onChange={(e) => uploadProof(e.target.files?.[0])} />
-          {proofUrl && <img src={proofUrl} alt="comprobante" style={{ maxWidth: 220, borderRadius: 8, marginTop: 8, display: "block" }} />}
+          <FilePicker
+            label="Adjuntar comprobante"
+            hint="Foto o captura de la transferencia · se comprime sola"
+            value={proofUrl || undefined}
+            busy={busy}
+            onPick={(f) => uploadProof(f)}
+            onClear={() => setProofUrl("")}
+          />
           <button onClick={payManual} disabled={!proofUrl || busy}>{busy ? "Subiendo…" : "Enviar comprobante"}</button>
           </>)}
         </div>
@@ -506,7 +521,14 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
             </select>
           </div>
           <label>Ícono de la comunidad</label>
-          <input type="file" accept="image/*" onChange={(e) => uploadIcon(e.target.files?.[0])} />
+          <FilePicker
+            label="Subir ícono"
+            hint="Cuadrado, mínimo 256×256"
+            value={settings.iconUrl || undefined}
+            busy={busy}
+            onPick={(f) => uploadIcon(f)}
+            onClear={() => setSettings((s) => ({ ...s, iconUrl: "" }))}
+          />
           {settings.iconUrl && <img src={settings.iconUrl} alt="" style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover", marginTop: 8, display: "block" }} />}
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
             <input type="checkbox" style={{ width: "auto" }} checked={settings.isPublic} onChange={(e) => setSettings({ ...settings, isPublic: e.target.checked })} />
