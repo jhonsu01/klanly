@@ -63,14 +63,17 @@ if ($codeMatch.Success) {
 Write-TextNoBom $gradle $g
 
 # 5) Commit + tag + push
-# Nota: git escribe avisos (p. ej. "LF will be replaced by CRLF") en stderr y
-# PowerShell los convierte en NativeCommandError, abortando el script aunque el
-# comando haya funcionado. Por eso silenciamos stderr en los comandos de git.
-git add -A 2>$null
-git commit -m "chore(release): v$Version" 2>$null
-git tag "v$Version" 2>$null
-git push origin HEAD 2>$null
-git push origin "v$Version" 2>$null
+# Nota: git escribe avisos (p. ej. "LF will be replaced by CRLF") en stderr.
+# En Windows PowerShell 5.1 eso se convierte en NativeCommandError y aborta el
+# script aunque el comando haya funcionado -- y redirigir con 2>$null NO lo
+# evita (la propia redireccion es la que envuelve cada linea en un ErrorRecord).
+# La forma fiable es bajar ErrorActionPreference y no redirigir.
+$ErrorActionPreference = 'Continue'
+git add -A
+git commit -m "chore(release): v$Version"
+git tag "v$Version"
+git push origin HEAD
+git push origin "v$Version"
 
 Write-Host "==> Tag v$Version empujado. GitHub Actions compilara y publicara la Release." -ForegroundColor Green
 Write-Host "    Sigue el progreso con:  gh run watch" -ForegroundColor DarkGray
