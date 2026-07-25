@@ -26,6 +26,7 @@ export async function POST(req: Request) {
 
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (!u) return fail("Credenciales inválidas", 401);
+  if (u.deletedAt) return fail("Esta cuenta fue eliminada.", 401);
 
   const okPass = await verifyPassword(password, u.passwordHash);
   if (!okPass) return fail("Credenciales inválidas", 401);

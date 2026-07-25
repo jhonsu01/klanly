@@ -31,6 +31,9 @@ export const users = pgTable("users", {
   producerPlanMonths: integer("producer_plan_months"), // plan solicitado (meses)
   producerProofUrl: text("producer_proof_url"), // comprobante de pago del plan
   totpSecret: text("totp_secret"),
+  /** Cuenta eliminada por el usuario: se anonimiza, no se borra la fila
+   *  (los registros contables de pagos deben conservarse). */
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -307,6 +310,8 @@ export const lessons = pgTable(
     title: text("title").notNull(),
     videoUrl: text("video_url"),
     content: text("content"),
+    /** Material complementario: enlaces externos e imágenes alojadas fuera. */
+    resources: jsonb("resources").$type<{ kind: "link" | "image"; label: string; url: string }[]>(),
     minLevel: integer("min_level").notNull().default(1),
     position: integer("position").notNull().default(0),
   },

@@ -27,6 +27,11 @@ const Body = z.object({
   videoUrl: z.string().url().optional().or(z.literal("")),
   content: z.string().max(10000).optional(),
   minLevel: z.number().int().min(1).max(9).optional(),
+  resources: z.array(z.object({
+    kind: z.enum(["link", "image"]),
+    label: z.string().max(120).default(""),
+    url: z.string().regex(/^https?:\/\/[^\s"'<>]+$/, "Solo URLs http(s)"),
+  })).max(12).optional(),
   move: z.enum(["up", "down"]).optional(), // reordenar
 });
 
@@ -54,6 +59,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (parsed.data[k] !== undefined) patch[k] = parsed.data[k];
   }
   if (parsed.data.videoUrl !== undefined) patch.videoUrl = parsed.data.videoUrl || null;
+  if (parsed.data.resources !== undefined) patch.resources = parsed.data.resources;
   if (Object.keys(patch).length === 0) return ok({ updated: false });
 
   const [updated] = await db.update(lessons).set(patch).where(eq(lessons.id, params.id)).returning();

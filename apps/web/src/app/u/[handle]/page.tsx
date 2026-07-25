@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, uploadFile } from "@/lib/api-client";
 import FilePicker from "@/components/FilePicker";
 import TopBar from "@/components/TopBar";
+import ConfirmDanger from "@/components/ConfirmDanger";
+import { askStepUp } from "@/lib/api-client";
 
 type Com = { slug: string; name: string; role: string; level: number; points: number };
 type Profile = {
@@ -22,6 +24,8 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
   const [twoFa, setTwoFa] = useState(false);
   const [setup, setSetup] = useState<{ secret: string; otpauth: string } | null>(null);
   const [code, setCode] = useState("");
+  const [delOpen, setDelOpen] = useState(false);
+  const [elig, setElig] = useState<{ canDelete: boolean; activeSubscribers: number; lastAccessUntil: string | null } | null>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -31,7 +35,11 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
       setP(prof);
       setForm({ displayName: prof.displayName, bio: prof.bio || "", country: prof.country || "", avatarUrl: prof.avatarUrl || "" });
     } catch (e: any) { flash(e.message, false); }
-    try { const me = await api(`/auth/me`); setMeHandle(me.handle); setTwoFa(!!me.twoFactorEnabled); } catch { setMeHandle(null); }
+    try {
+      const me = await api(`/auth/me`);
+      setMeHandle(me.handle); setTwoFa(!!me.twoFactorEnabled);
+      if (me.handle === handle) api(`/auth/delete-account`).then(setElig).catch(() => {});
+    } catch { setMeHandle(null); }
   }, [handle]);
   useEffect(() => { load(); }, [load]);
 
@@ -49,6 +57,23 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
       await api(`/auth/me`, "PATCH", { displayName: form.displayName, bio: form.bio, country: form.country || undefined, avatarUrl: form.avatarUrl || undefined });
       setEdit(false); flash("Perfil actualizado ✔"); load();
     } catch (e: any) { flash(e.message, false); }
+  };
+  const askDelete = async () => {
+    if (elig && !elig.canDelete) {
+      const hasta = elig.lastAccessUntil ? new Date(elig.lastAccessUntil).toLocaleDateString() : "el vencimiento";
+      flash(`Aún tienes ${elig.activeSubscribers} suscriptor(es) activos. Podrás eliminar tu cuenta desde ${hasta}.`, false);
+      return;
+    }
+    setDelOpen(true);
+  };
+  const doDelete = async () => {
+    try {
+      setBusy(true);
+      const code = await askStepUp("la eliminación de tu cuenta");
+      if (!code) { setBusy(false); return; }
+      await api(`/auth/delete-account`, "POST", { confirm: "confirmo", code });
+      window.location.href = "/";
+    } catch (e: any) { setBusy(false); setDelOpen(false); flash(e.message, false); }
   };
   const start2fa = async () => { try { setSetup(await api(`/auth/2fa/setup`, "POST")); } catch (e: any) { flash(e.message, false); } };
   const enable2fa = async () => { try { await api(`/auth/2fa/enable`, "POST", { secret: setup!.secret, code }); setSetup(null); setCode(""); setTwoFa(true); flash("2FA activado ✔"); } catch (e: any) { flash(e.message, false); } };
@@ -123,6 +148,48 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
             <a href="/afiliados"><button className="ghost" style={{ marginTop: 0 }}>💰 Mi panel de afiliado</button></a>
           </div>
         </div>
+      )}
+
+      {isMe && (
+        <div className="card" style={{ marginTop: 16, borderColor: "var(--red)" }}>
+          <h2 style={{ color: "var(--red)" }}>Zona de peligro</h2>
+          <div className="muted">
+            Eliminar tu cuenta borra tus datos personales de forma permanente. No hay vuelta atrás.
+          </div>
+          {elig && !elig.canDelete && (
+            <div className="cd-warn" style={{ marginTop: 12 }}>
+              Como productor no puedes eliminar tu cuenta todavía: tienes <b>{elig.activeSubscribers} suscriptor(es)</b> con
+              acceso pagado vigente. Podrás hacerlo a partir del{" "}
+              <b>{elig.lastAccessUntil ? new Date(elig.lastAccessUntil).toLocaleDateString() : "vencimiento"}</b>,
+              cuando termine el periodo del último suscriptor.
+            </div>
+          )}
+          <button
+            className="ghost"
+            style={{ marginTop: 12, color: "var(--red)", borderColor: "var(--red)" }}
+            onClick={askDelete}
+            disabled={busy}
+          >
+            🗑 Eliminar mi cuenta
+          </button>
+        </div>
+      )}
+
+      {delOpen && (
+        <ConfirmDanger
+          title="Eliminar tu cuenta"
+          detail="Vas a eliminar definitivamente tu cuenta de Klanly."
+          bullets={[
+            "Perderás el acceso a todas las comunidades en las que pagaste.",
+            "Se borran tu perfil, avatar, bio y tu 2FA.",
+            "Las comisiones de afiliado pendientes quedan anuladas.",
+            "No se puede reactivar: tendrías que crear una cuenta nueva desde cero.",
+          ]}
+          actionLabel="Eliminar mi cuenta"
+          busy={busy}
+          onConfirm={doDelete}
+          onCancel={() => setDelOpen(false)}
+        />
       )}
 
       <div className="card" style={{ marginTop: 16 }}>

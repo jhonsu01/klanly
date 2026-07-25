@@ -15,6 +15,11 @@ const Body = z.object({
   videoUrl: z.string().url().optional(),
   content: z.string().max(10000).optional(),
   minLevel: z.number().int().min(1).max(9).default(1),
+  resources: z.array(z.object({
+    kind: z.enum(["link", "image"]),
+    label: z.string().max(120).default(""),
+    url: z.string().regex(/^https?:\/\/[^\s"'<>]+$/, "Solo URLs http(s)"),
+  })).max(12).optional(),
 });
 
 // Agregar lección a un curso (owner/admin)
@@ -44,6 +49,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       moduleName: parsed.data.moduleName,
       videoUrl: parsed.data.videoUrl,
       content: parsed.data.content,
+      resources: parsed.data.resources,
       minLevel: parsed.data.minLevel,
       position: next,
     })

@@ -4,11 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, uploadFile } from "@/lib/api-client";
 import FilePicker from "@/components/FilePicker";
 import TopBar from "@/components/TopBar";
+import MarkdownEditor from "@/components/MarkdownEditor";
+import ResourceEditor, { ResourceList, type Resource } from "@/components/Resources";
+import ConfirmDanger from "@/components/ConfirmDanger";
+import { renderMarkdown } from "@/lib/markdown";
 import { parseVideo } from "@/lib/video";
 
 type Lesson = {
   id: string; moduleName?: string | null; title: string; videoUrl?: string | null;
-  content?: string | null; minLevel: number; position: number; completed: boolean; locked: boolean;
+  content?: string | null; resources?: Resource[] | null;
+  minLevel: number; position: number; completed: boolean; locked: boolean;
 };
 type CourseData = {
   course: { id: string; title: string; description?: string; coverUrl?: string | null; minLevel: number };
@@ -21,6 +26,7 @@ type CourseData = {
 };
 
 const empty = { moduleName: "", title: "", videoUrl: "", content: "", minLevel: "1" };
+const noRes: Resource[] = [];
 
 export default function CoursePage({ params }: { params: { id: string } }) {
   const id = params.id;
@@ -34,6 +40,9 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const [editCourse, setEditCourse] = useState(false);
   const [cForm, setCForm] = useState({ title: "", description: "", coverUrl: "" });
   const [busy, setBusy] = useState(false);
+  const [formRes, setFormRes] = useState<Resource[]>(noRes);
+  const [editRes, setEditRes] = useState<Resource[]>(noRes);
+  const [confirm, setConfirm] = useState<null | { kind: "course" } | { kind: "lesson"; id: string; title: string }>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -80,34 +89,42 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         title: form.title, moduleName: form.moduleName || undefined,
         videoUrl: form.videoUrl || undefined, content: form.content || undefined,
         minLevel: parseInt(form.minLevel || "1", 10),
+        resources: formRes.filter((r) => r.url.trim()),
       });
-      setForm({ ...empty }); setShowAdd(false); flash("Lección agregada ✔"); load();
+      setForm({ ...empty }); setFormRes([]); setShowAdd(false); flash("Lección agregada ✔"); load();
     } catch (e: any) { flash(e.message, false); }
   };
   const complete = async (lessonId: string) => {
     try { const r = await api(`/lessons/${lessonId}/complete`, "POST"); flash(r.leveledUp ? `¡Completada! Nivel ${r.level} 🎉` : "Lección completada ✔"); load(); }
     catch (e: any) { flash(e.message, false); }
   };
-  const startEdit = (l: Lesson) => { setEditing(l.id); setEditForm({ moduleName: l.moduleName || "", title: l.title, videoUrl: l.videoUrl || "", content: l.content || "", minLevel: String(l.minLevel) }); };
+  const startEdit = (l: Lesson) => {
+    setEditing(l.id);
+    setEditForm({ moduleName: l.moduleName || "", title: l.title, videoUrl: l.videoUrl || "", content: l.content || "", minLevel: String(l.minLevel) });
+    setEditRes(l.resources ?? []);
+  };
   const saveEdit = async (lessonId: string) => {
     try {
       await api(`/lessons/${lessonId}`, "PATCH", {
         title: editForm.title, moduleName: editForm.moduleName, videoUrl: editForm.videoUrl,
         content: editForm.content, minLevel: parseInt(editForm.minLevel || "1", 10),
+        resources: editRes.filter((r) => r.url.trim()),
       });
       setEditing(null); flash("Lección actualizada ✔"); load();
     } catch (e: any) { flash(e.message, false); }
   };
-  const delLesson = async (lessonId: string) => { try { await api(`/lessons/${lessonId}`, "DELETE"); if (sel === lessonId) setSel(null); flash("Lección borrada"); load(); } catch (e: any) { flash(e.message, false); } };
+  const delLesson = async (lessonId: string) => {
+    try { await api(`/lessons/${lessonId}`, "DELETE"); if (sel === lessonId) setSel(null); setConfirm(null); flash("Lección borrada"); load(); }
+    catch (e: any) { flash(e.message, false); }
+  };
   const move = async (lessonId: string, dir: "up" | "down") => { try { await api(`/lessons/${lessonId}`, "PATCH", { move: dir }); load(); } catch (e: any) { flash(e.message, false); } };
   const saveCourse = async () => {
     try { await api(`/courses/${id}`, "PATCH", { title: cForm.title, description: cForm.description, coverUrl: cForm.coverUrl || undefined }); setEditCourse(false); flash("Curso actualizado ✔"); load(); }
     catch (e: any) { flash(e.message, false); }
   };
   const delCourse = async () => {
-    if (!confirm("¿Borrar el curso y todas sus lecciones?")) return;
     try { await api(`/courses/${id}`, "DELETE"); window.location.href = d.community ? `/c/${d.community.slug}` : "/"; }
-    catch (e: any) { flash(e.message, false); }
+    catch (e: any) { setConfirm(null); flash(e.message, false); }
   };
 
   return (
@@ -130,11 +147,36 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
+      {confirm?.kind === "course" && (
+        <ConfirmDanger
+          title="Borrar el curso completo"
+          detail={`Vas a eliminar «${d.course.title}» de la comunidad.`}
+          bullets={[
+            `Se borrarán las ${d.lessons.length} lecciones del curso.`,
+            "Se perderá el progreso de todos los miembros en este curso.",
+            "Los videos y materiales enlazados dejarán de estar disponibles aquí.",
+          ]}
+          actionLabel="Borrar curso"
+          onConfirm={delCourse}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+      {confirm?.kind === "lesson" && (
+        <ConfirmDanger
+          title="Borrar la lección"
+          detail={`Vas a eliminar «${confirm.title}».`}
+          bullets={["Se perderá el progreso de los miembros en esta lección."]}
+          actionLabel="Borrar lección"
+          onConfirm={() => delLesson(confirm.id)}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+
       {d.isManager && (
         <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="ghost" style={{ marginTop: 0 }} onClick={() => setShowAdd((s) => !s)}>{showAdd ? "Cancelar" : "+ Agregar lección"}</button>
           <button className="ghost" style={{ marginTop: 0 }} onClick={() => setEditCourse((s) => !s)}>✏️ Editar curso</button>
-          <button className="ghost" style={{ marginTop: 0, color: "#ffb4c4" }} onClick={delCourse}>🗑 Borrar curso</button>
+          <button className="ghost" style={{ marginTop: 0, color: "#ffb4c4" }} onClick={() => setConfirm({ kind: "course" })}>🗑 Borrar curso</button>
         </div>
       )}
 
@@ -166,7 +208,9 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           <label>URL del video (YouTube no listado / Vimeo / .mp4)</label>
           <input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtu.be/XXXXXXXXXXX" />
           <label>Contenido / notas (opcional)</label>
-          <textarea rows={3} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+          <MarkdownEditor value={form.content} onChange={(v) => setForm({ ...form, content: v })} />
+          <label>Material complementario (enlaces e imágenes externas)</label>
+          <ResourceEditor items={formRes} onChange={setFormRes} />
           <label>Desbloquear en nivel</label>
           <input value={form.minLevel} onChange={(e) => setForm({ ...form, minLevel: e.target.value })} style={{ width: 80 }} />
           <div><button onClick={addLesson} disabled={!form.title}>Guardar lección</button></div>
@@ -192,7 +236,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                     <span style={{ display: "flex", gap: 4, fontSize: 12 }}>
                       <span onClick={() => move(l.id, "up")} title="Subir" style={{ cursor: "pointer" }}>↑</span>
                       <span onClick={() => move(l.id, "down")} title="Bajar" style={{ cursor: "pointer" }}>↓</span>
-                      <span onClick={() => delLesson(l.id)} title="Borrar" style={{ cursor: "pointer" }}>🗑</span>
+                      <span onClick={() => setConfirm({ kind: "lesson", id: l.id, title: l.title })} title="Borrar" style={{ cursor: "pointer" }}>🗑</span>
                     </span>
                   )}
                 </div>
@@ -215,7 +259,10 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                   <label>Módulo</label><input value={editForm.moduleName} onChange={(e) => setEditForm({ ...editForm, moduleName: e.target.value })} />
                   <label>Título</label><input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
                   <label>URL del video</label><input value={editForm.videoUrl} onChange={(e) => setEditForm({ ...editForm, videoUrl: e.target.value })} />
-                  <label>Contenido</label><textarea rows={3} value={editForm.content} onChange={(e) => setEditForm({ ...editForm, content: e.target.value })} />
+                  <label>Contenido</label>
+                  <MarkdownEditor value={editForm.content} onChange={(v) => setEditForm({ ...editForm, content: v })} />
+                  <label>Material complementario (enlaces e imágenes externas)</label>
+                  <ResourceEditor items={editRes} onChange={setEditRes} />
                   <label>Nivel</label><input value={editForm.minLevel} onChange={(e) => setEditForm({ ...editForm, minLevel: e.target.value })} style={{ width: 80 }} />
                   <div><button onClick={() => saveEdit(current.id)}>Guardar cambios</button></div>
                 </div>
@@ -232,7 +279,11 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                   ) : video?.kind === "link" ? (
                     <a href={video.href} target="_blank" rel="noreferrer"><button className="ghost">Abrir recurso ↗</button></a>
                   ) : <div className="muted">Esta lección no tiene video.</div>}
-                  {current.content && <p style={{ marginTop: 14, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{current.content}</p>}
+                  {current.content && (
+                    <div className="md-body" style={{ marginTop: 14 }}
+                         dangerouslySetInnerHTML={{ __html: renderMarkdown(current.content) }} />
+                  )}
+                  <ResourceList items={current.resources} />
                   {d.isMember && <button onClick={() => complete(current.id)} disabled={current.completed} style={{ background: current.completed ? "var(--surface2)" : undefined }}>{current.completed ? "✅ Completada" : "Marcar como completada"}</button>}
                 </div>
               )}

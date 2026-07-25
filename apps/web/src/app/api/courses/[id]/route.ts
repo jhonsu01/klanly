@@ -56,6 +56,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     title: l.title,
     videoUrl: l.videoUrl,
     content: l.content,
+    resources: l.resources ?? [],
     minLevel: l.minLevel,
     position: l.position,
     completed: completedIds.has(l.id),
