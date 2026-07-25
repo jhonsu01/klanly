@@ -3,15 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, money } from "@/lib/api-client";
 
-type Me = { handle: string; role: string; displayName?: string; email?: string } | null;
+type Me = { handle: string; role: string; displayName?: string; email?: string; twoFactorEnabled?: boolean } | null;
 type Overview = { communities: number; users: number; pendingProducers: number; pendingProofs: number; pendingPayouts: number; grossRevenueCents: number };
-type Producer = { id: string; displayName: string; email: string; handle: string; producerStatus: string };
+type Producer = { id: string; displayName: string; email: string; handle: string; producerStatus: string; planMonths?: number; proofUrl?: string; accessUntil?: string };
+type Account = { bank: string; number: string; name: string };
+type Plan = { label: string; months: number; priceCents: number; currency: string };
 type Proof = { id: string; amountCents: number; currency: string; proofUrl?: string; userEmail: string; communityName: string };
 type Payout = { id: string; amountCents: number; currency: string; method?: string; status: string; payeeName: string; payeeEmail: string; communityName?: string };
 type Com = { id: string; slug: string; name: string; priceCents: number; currency: string; isPublic: boolean; ownerName: string; ownerEmail: string; members: number; revenueCents: number };
 type Audit = { id: number; action: string; entity?: string; entityId?: string; createdAt: string; actorName?: string };
 
-type Section = "overview" | "producers" | "proofs" | "payouts" | "communities" | "audit" | "settings";
+type Section = "overview" | "producers" | "proofs" | "payouts" | "communities" | "billing" | "audit" | "settings";
 
 export default function AdminPage() {
   const [me, setMe] = useState<Me>(null);
@@ -25,6 +27,11 @@ export default function AdminPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [coms, setComs] = useState<Com[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [twoFaSetup, setTwoFaSetup] = useState<{ secret: string; otpauth: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [pwd, setPwd] = useState({ current: "", next: "" });
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -37,6 +44,8 @@ export default function AdminPage() {
     setPayouts(await api(`/admin/payouts`).catch(() => []));
     setComs(await api(`/admin/communities`).catch(() => []));
     setAudit(await api(`/admin/audit`).catch(() => []));
+    const s = await api(`/admin/settings`).catch(() => null);
+    if (s) { setAccounts(s.adminAccounts || []); setPlans(s.producerPlans || []); }
   }, []);
   useEffect(() => { if (me?.role === "admin") refresh(); }, [me, sec, refresh]);
 
@@ -47,6 +56,12 @@ export default function AdminPage() {
   const reviewProducer = async (id: string, d: "approve" | "reject") => { try { await api(`/admin/producers/${id}`, "PATCH", { decision: d }); flash(d === "approve" ? "Productor aprobado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };
   const reviewProof = async (id: string, d: "approve" | "reject") => { try { await api(`/payments/orders/${id}/review`, "POST", { decision: d }); flash(d === "approve" ? "Aprobado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };
   const reviewPayout = async (id: string, d: "approve" | "reject") => { try { await api(`/payouts/${id}`, "PATCH", { decision: d }); flash(d === "approve" ? "Payout pagado ✔" : "Rechazado"); refresh(); } catch (e: any) { flash(e.message, false); } };
+  const saveSettings = async () => { try { await api(`/admin/settings`, "POST", { adminAccounts: accounts.filter((a) => a.bank || a.number || a.name), producerPlans: plans }); flash("Configuración guardada ✔"); } catch (e: any) { flash(e.message, false); } };
+  const start2fa = async () => { try { setTwoFaSetup(await api(`/auth/2fa/setup`, "POST")); } catch (e: any) { flash(e.message, false); } };
+  const enable2fa = async () => { try { await api(`/auth/2fa/enable`, "POST", { secret: twoFaSetup!.secret, code }); setTwoFaSetup(null); setCode(""); setMe({ ...me!, twoFactorEnabled: true }); flash("2FA activado ✔"); } catch (e: any) { flash(e.message, false); } };
+  const disable2fa = async () => { try { await api(`/auth/2fa/disable`, "POST", { code }); setCode(""); setMe({ ...me!, twoFactorEnabled: false }); flash("2FA desactivado"); } catch (e: any) { flash(e.message, false); } };
+  const changePwd = async () => { try { await api(`/auth/change-password`, "POST", { currentPassword: pwd.current, newPassword: pwd.next }); setPwd({ current: "", next: "" }); flash("Contraseña actualizada ✔"); } catch (e: any) { flash(e.message, false); } };
+  const logout = async () => { await api(`/auth/logout`, "POST").catch(() => {}); window.location.href = "/"; };
 
   const pendingProducers = producers.filter((p) => p.producerStatus === "pending");
   const reqPayouts = payouts.filter((p) => p.status === "requested");
@@ -68,6 +83,7 @@ export default function AdminPage() {
           <Item id="proofs" icon="🧾" label="Comprobantes" badge={proofs.length} />
           <Item id="payouts" icon="💸" label="Payouts" badge={reqPayouts.length} />
           <Item id="communities" icon="👥" label="Comunidades" />
+          <Item id="billing" icon="🏦" label="Cobros a productores" />
           <Item id="audit" icon="🔎" label="Auditoría" />
           <Item id="settings" icon="⚙️" label="Ajustes" />
         </nav>
@@ -101,7 +117,10 @@ export default function AdminPage() {
             {pendingProducers.length === 0 && <div className="muted">Sin solicitudes pendientes.</div>}
             {pendingProducers.map((p) => (
               <div className="row" key={p.id}>
-                <div><a href={`/u/${p.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{p.displayName}</a><div className="muted">{p.email}</div></div>
+                <div>
+                  <a href={`/u/${p.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{p.displayName}</a>
+                  <div className="muted">{p.email}{p.planMonths ? ` · plan ${p.planMonths} mes(es)` : ""}{p.proofUrl ? <> · <a href={p.proofUrl} target="_blank" rel="noreferrer">ver comprobante</a></> : " · sin comprobante"}</div>
+                </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={{ marginTop: 0, background: "var(--green)", color: "#04231a" }} onClick={() => reviewProducer(p.id, "approve")}>Aprobar</button>
                   <button className="ghost" style={{ marginTop: 0 }} onClick={() => reviewProducer(p.id, "reject")}>Rechazar</button>
@@ -172,15 +191,78 @@ export default function AdminPage() {
           </div>
         )}
 
-        {sec === "settings" && (
+        {sec === "billing" && (
           <div className="card">
-            <h2>Ajustes</h2>
-            <div className="row"><div className="muted">Super administrador</div><div>{me.displayName} · {me.email}</div></div>
-            <div className="muted" style={{ marginTop: 12 }}>
-              La suscripción mensual de los productores se aprueba manualmente (el productor paga por fuera y tú lo apruebas en "Productores").
-              Automatizar el cobro recurrente es un paso siguiente.
-            </div>
+            <h2>Cobros a productores</h2>
+            <div className="muted" style={{ marginBottom: 12 }}>Configura tus cuentas (donde pagan los productores) y los planes de acceso. Estos datos se muestran al usuario cuando solicita ser productor.</div>
+
+            <h2 style={{ fontSize: 15 }}>Tus cuentas de pago (máx 8)</h2>
+            {accounts.map((a, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                <input style={{ flex: 1, minWidth: 90 }} placeholder="Banco (Nequi, BreB…)" value={a.bank} onChange={(e) => setAccounts(accounts.map((x, j) => j === i ? { ...x, bank: e.target.value } : x))} />
+                <input style={{ flex: 1, minWidth: 90 }} placeholder="Número / llave" value={a.number} onChange={(e) => setAccounts(accounts.map((x, j) => j === i ? { ...x, number: e.target.value } : x))} />
+                <input style={{ flex: 1, minWidth: 90 }} placeholder="Titular" value={a.name} onChange={(e) => setAccounts(accounts.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
+                <button className="ghost" style={{ marginTop: 0, color: "#ffb4c4" }} onClick={() => setAccounts(accounts.filter((_, j) => j !== i))}>✕</button>
+              </div>
+            ))}
+            {accounts.length < 8 && <button className="ghost" style={{ marginTop: 0 }} onClick={() => setAccounts([...accounts, { bank: "", number: "", name: "" }])}>+ Agregar cuenta</button>}
+
+            <h2 style={{ fontSize: 15, marginTop: 18 }}>Planes de acceso</h2>
+            {plans.map((p, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <input style={{ flex: 1, minWidth: 80 }} placeholder="Etiqueta (1 mes)" value={p.label} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
+                <input style={{ width: 90 }} type="number" placeholder="Meses" value={p.months} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, months: parseInt(e.target.value || "1", 10) } : x))} />
+                <input style={{ width: 110 }} type="number" placeholder="Precio USD" value={(p.priceCents / 100).toString()} onChange={(e) => setPlans(plans.map((x, j) => j === i ? { ...x, priceCents: Math.round(parseFloat(e.target.value || "0") * 100) } : x))} />
+                <button className="ghost" style={{ marginTop: 0, color: "#ffb4c4" }} onClick={() => setPlans(plans.filter((_, j) => j !== i))}>✕</button>
+              </div>
+            ))}
+            {plans.length < 8 && <button className="ghost" style={{ marginTop: 0 }} onClick={() => setPlans([...plans, { label: "", months: 1, priceCents: 0, currency: "USD" }])}>+ Agregar plan</button>}
+
+            <div><button onClick={saveSettings}>Guardar configuración</button></div>
           </div>
+        )}
+
+        {sec === "settings" && (
+          <>
+            <div className="card">
+              <h2>Cuenta</h2>
+              <div className="row"><div className="muted">Nombre</div><div>{me.displayName}</div></div>
+              <div className="row"><div className="muted">Email</div><div>{me.email}</div></div>
+              <div className="row"><div className="muted">Rol</div><span className="pill" style={{ color: "var(--accent2)" }}>super admin</span></div>
+              <button className="ghost" onClick={logout}>Cerrar sesión</button>
+            </div>
+
+            <div className="card" style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2>Seguridad (2FA)</h2>
+                <span className="pill" style={{ color: me.twoFactorEnabled ? "var(--green)" : "var(--muted)" }}>{me.twoFactorEnabled ? "Activo" : "Inactivo"}</span>
+              </div>
+              {!me.twoFactorEnabled && !twoFaSetup && <button onClick={start2fa}>Activar 2FA</button>}
+              {!me.twoFactorEnabled && twoFaSetup && (
+                <div style={{ marginTop: 10 }}>
+                  <div className="muted">Añade esta clave en Google Authenticator/Authy:</div>
+                  <code style={{ display: "block", background: "var(--input)", padding: "8px 10px", borderRadius: 8, margin: "8px 0", wordBreak: "break-all" }}>{twoFaSetup.secret}</code>
+                  <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código de 6 dígitos" maxLength={6} style={{ width: 160 }} />
+                  <div><button onClick={enable2fa} disabled={code.length !== 6}>Confirmar y activar</button></div>
+                </div>
+              )}
+              {me.twoFactorEnabled && (
+                <div style={{ marginTop: 10 }}>
+                  <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Código actual" maxLength={6} style={{ width: 160 }} />
+                  <div><button className="ghost" onClick={disable2fa} disabled={code.length !== 6}>Desactivar 2FA</button></div>
+                </div>
+              )}
+            </div>
+
+            <div className="card" style={{ marginTop: 14 }}>
+              <h2>Cambiar contraseña</h2>
+              <label>Contraseña actual</label>
+              <input type="password" value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} />
+              <label>Nueva contraseña (mín. 8)</label>
+              <input type="password" value={pwd.next} onChange={(e) => setPwd({ ...pwd, next: e.target.value })} />
+              <button onClick={changePwd} disabled={!pwd.current || pwd.next.length < 8}>Actualizar contraseña</button>
+            </div>
+          </>
         )}
       </main>
     </div>

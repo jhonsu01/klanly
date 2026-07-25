@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api, uploadFile } from "@/lib/api-client";
 
-type Me = { id: string; email: string; displayName: string; handle: string; role: string; producerStatus?: string } | null;
+type Me = { id: string; email: string; displayName: string; handle: string; role: string; producerStatus?: string; producerAccessUntil?: string | null } | null;
 type Community = {
   id: string;
   slug: string;
@@ -12,17 +13,8 @@ type Community = {
   currency: string;
   billingPeriod: string;
 };
-
-async function api(path: string, method = "GET", body?: unknown) {
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.error || `Error ${res.status}`);
-  return json.data;
-}
+type Plan = { label: string; months: number; priceCents: number; currency: string };
+type Account = { bank: string; number: string; name: string };
 
 export default function Home() {
   const [me, setMe] = useState<Me>(null);
@@ -41,13 +33,32 @@ export default function Home() {
   const [cDesc, setCDesc] = useState("");
   const [cPrice, setCPrice] = useState("0");
 
+  // Solicitud de productor
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [adminAccounts, setAdminAccounts] = useState<Account[]>([]);
+  const [selPlan, setSelPlan] = useState<number | null>(null);
+  const [prodProof, setProdProof] = useState("");
+  const [busy, setBusy] = useState(false);
+
   const refresh = async () => {
     try { setMe(await api("/auth/me")); } catch { setMe(null); }
     try { setCommunities(await api("/communities")); } catch {}
   };
   useEffect(() => { refresh(); }, []);
 
+  // Cargar planes cuando el usuario no es productor aprobado
+  useEffect(() => {
+    if (me && me.role !== "admin" && me.producerStatus !== "approved") {
+      api("/producer/plans").then((d) => { setPlans(d.plans || []); setAdminAccounts(d.adminAccounts || []); }).catch(() => {});
+    }
+  }, [me]);
+
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
+  const uploadProof = async (file?: File) => {
+    if (!file) return;
+    try { setBusy(true); setProdProof(await uploadFile(file, "proofs")); flash("Comprobante subido ✔"); }
+    catch (e: any) { flash(e.message, false); } finally { setBusy(false); }
+  };
 
   const doRegister = async () => {
     try { await api("/auth/register", "POST", { email, password, displayName }); flash("Cuenta creada ✔"); refresh(); }
@@ -75,7 +86,8 @@ export default function Home() {
   };
 
   const applyProducer = async () => {
-    try { const r = await api("/producer/apply", "POST", {}); flash(r.status === "approved" ? "Ya eres productor ✔" : "Solicitud enviada. El admin la revisará."); refresh(); }
+    if (!selPlan) { flash("Elige un plan", false); return; }
+    try { await api("/producer/apply", "POST", { planMonths: selPlan, proofUrl: prodProof || undefined }); flash("Solicitud enviada. El admin verificará tu pago."); refresh(); }
     catch (e: any) { flash(e.message, false); }
   };
 
@@ -153,8 +165,24 @@ export default function Home() {
             <div className="muted">Tu solicitud para ser <b>productor</b> está pendiente de aprobación del administrador.</div>
           ) : (
             <>
-              <div className="muted">Para publicar comunidades necesitas ser <b>productor aprobado</b> (suscripción mensual a la plataforma). El administrador revisa tu solicitud.</div>
-              <button onClick={applyProducer}>Quiero ser productor</button>
+              <div className="muted" style={{ marginBottom: 8 }}>Para publicar comunidades, elige un plan de acceso, paga a una de las cuentas y sube tu comprobante. El administrador verifica y te aprueba.</div>
+              <label>Plan de acceso</label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                {plans.length === 0 && <div className="muted">El administrador aún no configuró planes.</div>}
+                {plans.map((p) => (
+                  <button key={p.months} className={selPlan === p.months ? "" : "ghost"} style={{ marginTop: 0 }} onClick={() => setSelPlan(p.months)}>{p.label} · ${(p.priceCents / 100).toFixed(2)}</button>
+                ))}
+              </div>
+              {adminAccounts.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div className="muted">Paga a:</div>
+                  {adminAccounts.map((a, i) => (<div key={i} className="row" style={{ padding: "6px 0" }}><div><b>{a.bank}</b> · {a.number}<div className="muted">{a.name}</div></div></div>))}
+                </div>
+              )}
+              <label>Comprobante (imagen, opcional)</label>
+              <input type="file" accept="image/*" onChange={(e) => uploadProof(e.target.files?.[0])} />
+              {prodProof && <img src={prodProof} alt="" style={{ maxWidth: 160, borderRadius: 8, marginTop: 8, display: "block" }} />}
+              <button onClick={applyProducer} disabled={!selPlan || busy}>Enviar solicitud</button>
               {me.producerStatus === "rejected" && <div className="out err" style={{ marginTop: 8 }}>Tu solicitud anterior fue rechazada.</div>}
             </>
           )}

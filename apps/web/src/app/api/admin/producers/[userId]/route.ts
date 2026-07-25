@@ -27,9 +27,18 @@ export async function PATCH(req: Request, { params }: { params: { userId: string
   if (!target) return fail("Usuario no encontrado", 404);
 
   if (parsed.data.decision === "approve") {
-    await db.update(users).set({ producerStatus: "approved", platformRole: target.platformRole === "admin" ? "admin" : "producer" }).where(eq(users.id, target.id));
-    await db.insert(notifications).values({ userId: target.id, type: "producer_approved", body: "¡Fuiste aprobado como productor! Ya puedes publicar comunidades." });
-    return ok({ userId: target.id, status: "approved" });
+    const months = target.producerPlanMonths ?? 1;
+    // Vigencia: si ya tenía acceso futuro, extiende desde ahí; si no, desde hoy.
+    const base = target.producerAccessUntil && new Date(target.producerAccessUntil).getTime() > Date.now()
+      ? new Date(target.producerAccessUntil) : new Date();
+    const accessUntil = new Date(base.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+    await db.update(users).set({
+      producerStatus: "approved",
+      platformRole: target.platformRole === "admin" ? "admin" : "producer",
+      producerAccessUntil: accessUntil,
+    }).where(eq(users.id, target.id));
+    await db.insert(notifications).values({ userId: target.id, type: "producer_approved", body: `¡Aprobado como productor! Acceso hasta ${accessUntil.toLocaleDateString()}.` });
+    return ok({ userId: target.id, status: "approved", accessUntil });
   }
 
   await db.update(users).set({ producerStatus: "rejected" }).where(eq(users.id, target.id));

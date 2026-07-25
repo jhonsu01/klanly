@@ -24,8 +24,11 @@ export const users = pgTable("users", {
   country: text("country"),
   // user | producer | admin
   platformRole: text("platform_role").notNull().default("user"),
-  // Estado de aprobación como productor (paga mensual a la plataforma para publicar)
+  // Estado de aprobación como productor (paga a la plataforma para publicar)
   producerStatus: text("producer_status").notNull().default("none"), // none|pending|approved|rejected
+  producerAccessUntil: timestamp("producer_access_until", { withTimezone: true }), // vigencia del plan
+  producerPlanMonths: integer("producer_plan_months"), // plan solicitado (meses)
+  producerProofUrl: text("producer_proof_url"), // comprobante de pago del plan
   totpSecret: text("totp_secret"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -406,6 +409,15 @@ export const messages = pgTable(
     chatIdx: index("messages_community_created_idx").on(t.communityId, t.createdAt),
   }),
 );
+
+// ===================== AJUSTES DE PLATAFORMA (singleton) =====================
+// Cuentas donde los productores pagan a la plataforma + planes de acceso.
+export const platformSettings = pgTable("platform_settings", {
+  id: text("id").primaryKey().default("default"),
+  adminAccounts: jsonb("admin_accounts").$type<{ bank: string; number: string; name: string }[]>().notNull().default([]),
+  producerPlans: jsonb("producer_plans").$type<{ label: string; months: number; priceCents: number; currency: string }[]>().notNull().default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 // ===================== AUDITORIA =====================
 export const auditLog = pgTable("audit_log", {

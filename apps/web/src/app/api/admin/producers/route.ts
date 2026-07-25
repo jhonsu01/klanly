@@ -20,6 +20,9 @@ export async function GET() {
       email: users.email,
       handle: users.handle,
       producerStatus: users.producerStatus,
+      planMonths: users.producerPlanMonths,
+      proofUrl: users.producerProofUrl,
+      accessUntil: users.producerAccessUntil,
       createdAt: users.createdAt,
     })
     .from(users)

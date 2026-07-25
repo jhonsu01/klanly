@@ -41,9 +41,16 @@ export async function POST(req: Request) {
   const me = await currentUser();
   if (!me) return fail("No autenticado", 401);
 
-  // Solo productores aprobados (o el admin) pueden publicar comunidades
-  if (me.platformRole !== "admin" && me.producerStatus !== "approved") {
-    return fail("Debes ser productor aprobado para publicar. Aplica desde tu cuenta.", 403, { needsProducer: true, producerStatus: me.producerStatus });
+  // Solo productores aprobados con acceso vigente (o el admin) pueden publicar
+  if (me.platformRole !== "admin") {
+    const expired = me.producerAccessUntil && new Date(me.producerAccessUntil).getTime() <= Date.now();
+    if (me.producerStatus !== "approved" || expired) {
+      return fail(
+        expired ? "Tu acceso de productor venció. Renueva tu plan." : "Debes ser productor aprobado para publicar. Aplica desde tu cuenta.",
+        403,
+        { needsProducer: true, producerStatus: me.producerStatus, expired: !!expired },
+      );
+    }
   }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
