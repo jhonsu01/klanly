@@ -2,6 +2,10 @@
 
 # Klanly
 
+<div align="center">
+  <img src="./assets/banner.png" alt="klanly  Banner" width="100%" />
+  </div>
+
 **Plataforma de comunidades de pago** — con apps instalables (`.msi` Windows + `.apk` Android), app web en Vercel y cobros duales (pasarela + comprobante manual).
 
 [![Release](https://github.com/jhonsu01/klanly/actions/workflows/release.yml/badge.svg)](https://github.com/jhonsu01/klanly/actions/workflows/release.yml)
