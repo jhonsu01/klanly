@@ -23,43 +23,75 @@
 - **ZCode** ejecuta lo repetitivo/mecánico: convertir pantallas al sistema
   Nocturno, boilerplate, scripts, tests, edits puntuales, validación local.
 
-## Cómo invocarlo (puente por API)
+## Cómo invocarlo (puente por API) — FUNCIONANDO
 
-El usuario puso el endpoint fijo de Z.ai; **él carga la key** (no va en el repo).
+La key vive en `execution/.env` (ignorado por git). `execution/.env.example`
+documenta las variables.
 
-| Variable de entorno | Valor | quién la pone |
-|---|---|---|
-| `ZAI_BASE_URL` | `https://api.z.ai/api/coding/paas/v4` | fija (ya en `.env.example`) |
-| `ZAI_API_KEY` | *(la key de Z.ai del usuario)* | **el usuario** |
-| `ZAI_MODEL` | `glm-5.2` *(o el modelo coding que toque)* | ajustable |
+| Variable | Valor |
+|---|---|
+| `ZAI_BASE_URL` | `https://api.z.ai/api/coding/paas/v4` |
+| `ZAI_API_KEY` | la key del usuario (**no va al repo**) |
+| `ZAI_MODEL` | `glm-5.2` |
 
-Script puente: **`execution/zai_delegate.mjs`** (Node, sin dependencias, usa
-`fetch` global). Ejemplos:
+> **Gotcha resuelto:** hay que postear a `<BASE_URL>/chat/completions`.
+> Posteando a la base devuelve `404 {"path":"/v4"}`.
+>
+> **Ojo con la autoidentificación:** preguntado "qué modelo eres" responde
+> *"Claude 3.5 Sonnet"*. Es alucinación: el campo `model` de la respuesta de la
+> API dice `glm-5.2`. Fía del campo, no de lo que diga el modelo.
+
+### 1) Pregunta suelta / código corto
 
 ```bash
-# 1) Cargar la key (el usuario la exporta en su shell o la pone en execution/.env)
-export ZAI_API_KEY="..."
-
-# 2) Delegar una subtarea concreta
-node execution/zai_delegate.mjs "Convierte apps/web/src/app/pagos/page.tsx al \
-sistema Nocturno usando los primitivos de globals.css (.label, .meta, .figure, \
-.pill, .tabs). Referencia: apps/web/src/app/c/[slug]/page.tsx. No romper la \
-lógica. Devuelve solo el diff."
-
-# 3) O por stdin (para prompts largos / con código)
-cat .tmp/tarea.md | node execution/zai_delegate.mai
+node execution/zai_delegate.mjs "<tarea>"
+cat .tmp/tarea.md | node execution/zai_delegate.mjs
 ```
 
-> **Nota sobre el payload:** el script envía una petición estilo chat
-> (OpenAI-compatible) al endpoint. Si la API Z.ai de coding usa otro formato
-> (p. ej. `messages` estilo Anthropic u otro nombre de campo), basta con
-> ajustar el `body` en `zai_delegate.mjs` — la cabecera del script lo deja
-> marcado. El endpoint y la auth (Bearer) son los correctos.
+### 2) Convertir una pantalla al sistema Nocturno (el caso rentable)
 
-### Modo alternativo (sin API)
-El usuario abre ZCode en paralelo y le pega la subtarea. ZCode trabaja el repo
-directamente (mismo `skoolclone/`, misma memoria). Útil cuando se quiere
-interactivo o la key aún no está.
+```bash
+node execution/zcode_convert.mjs apps/web/src/app/pagos/page.tsx --dry   # informe
+node execution/zcode_convert.mjs apps/web/src/app/pagos/page.tsx         # escribe + .bak
+```
+
+**Por qué ahorra contexto:** el script lee el archivo, lo manda con los tokens y
+el catálogo de clases, y escribe el resultado en disco. El contenido del archivo
+**nunca entra al contexto del orquestador**: solo se imprime un informe de 5
+líneas. Coste real medido: 6k–27k tokens del lado de ZCode por pantalla.
+
+Validaciones automáticas antes de sobreescribir (aborta si fallan): conserva
+`"use client"`, conserva el componente exportado, no baja el conteo de
+`useState` / `useEffect` / `api(`, no deja hex crudos, no escribe la palabra
+prohibida, y no acorta el archivo a menos de la mitad.
+
+### Después de delegar, SIEMPRE
+
+```bash
+cd apps/web && npx tsc --noEmit && npx next build
+```
+
+Y revisar con el navegador que no haya **clases inexistentes** (el modelo se las
+inventa o usa las que no tocan):
+
+```js
+// en la consola del navegador
+const used=[...document.querySelectorAll('[class]')].flatMap(e=>[...e.classList]);
+const def=new Set(); for(const ss of document.styleSheets){try{for(const r of ss.cssRules){
+  const m=(r.selectorText||'').match(/\.[a-zA-Z][\w-]*/g); if(m)m.forEach(x=>def.add(x.slice(1)));}}catch{}}
+[...new Set(used.filter(c=>!def.has(c)&&!c.startsWith('__')))]
+```
+
+### Errores reales que cometió (revisar SIEMPRE estos)
+
+| Puso | Debía poner | Por qué |
+|---|---|---|
+| `.out` en botones | `.ghost` | `.out` es la clase de mensajes |
+| `.figure` en el secreto 2FA | mono normal | `.figure` es 24px dorado, para importes |
+| `.meta` en la bio del perfil | texto de lectura | `.meta` es mono 11px, para metadatos |
+| `.pact` en "Imprimir" | `.ghost` | `.pact` es de acciones de post |
+| `TopBar` dentro de un flex | prop `right` del TopBar | la barra es fija y a sangre |
+| `.pill.bad` en "pendiente" | `.pill` (dorado) | rojo = vencido, no pendiente |
 
 ## Qué delegar a ZCode (lo hace bien)
 
@@ -94,12 +126,22 @@ interactivo o la key aún no está.
 Ambas sesiones escriben/leen el mismo repo (`skoolclone/`), así que el código
 es el punto de sincronía principal.
 
-## Estado al crear este doc (2026-08-12)
+## Estado (2026-08-12, tras la primera delegación real)
 
-- Versión: v0.6.0. Rediseño Nocturno: tokens + primitivos + página de comunidad
-  commiteados y en vivo (Claude). Resto de pantallas pendientes de convertir.
-- **Cambios sin commitear hechos por ZCode** (decidir: commitear/pushear o revertir):
-  1. APK nativo Nocturno: `apps/android/.../values/colors.xml`, `themes.xml`,
-     `AndroidManifest.xml` (theme → `Theme.Klanly.Nocturno`).
-  2. Home Nocturno: `apps/web/src/app/page.tsx` + `globals.css` (bloque `.comm-*`).
+- Versión: v0.6.0. **Rediseño Nocturno completo y en vivo**: tokens, primitivos,
+  comunidad, home, pagos, factura, afiliados, perfil y Classroom. Commiteado y
+  pusheado (Vercel despliega solo).
+- `/admin` queda **deliberadamente sin migrar**: es el que carga la app de
+  escritorio y el usuario pidió no tocarla.
+- Android nativo: `Theme.Klanly.Nocturno` commiteado. **Necesita recompilar el
+  APK** para verse (quita el destello blanco al arrancar).
+- **CI de GitHub Actions desactivado** (limite de minutos superado): los
+  binarios se compilan en local con `scripts/build-apk.ps1`. Ver
+  `scripts/build-local.md`. Recordar: los cambios de web NO necesitan APK nuevo.
 - ZCode **no commitea ni pushea** sin orden explícita del usuario.
+
+## Pendiente de delegar (buenos candidatos)
+
+- Tests de `apps/web/src/lib/*` (markdown.ts, image.ts, api-client.ts).
+- Landing pública (opción `1g` del diseño) — aún no existe como pantalla.
+- Cámara directa en el APK (FileProvider + ACTION_IMAGE_CAPTURE).
