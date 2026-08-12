@@ -561,3 +561,20 @@ input, textarea, select { max-width: 100%; }
 .pact.on {
   background: rgba(91, 61, 245, .14); border-color: rgba(139, 92, 246, .34); color: var(--accent3);
 }
+
+/* ── Ítem del directorio de comunidades (home) ────────────────────────────
+   Tarjeta táctil: toda la fila es clicable, precio en mono y slug como
+   meta. Reemplaza los .row planos con el botón "Abrir" separado. */
+.comm-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 15px; margin-bottom: 8px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+  text-decoration: none; color: var(--text);
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.comm-item:hover { border-color: var(--accent2); background: var(--chip); }
+.comm-item:active { transform: scale(.995); }
+.comm-item:last-child { margin-bottom: 0; }
+.comm-main { flex: 1; min-width: 0; }
+.comm-name { font-size: 15px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.comm-open { font-family: var(--font-mono); font-size: 12px; color: var(--accent3); flex: none; }

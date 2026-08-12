@@ -139,10 +139,10 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         {d.course.coverUrl && <img src={d.course.coverUrl} alt="" style={{ width: "100%", maxHeight: 200, objectFit: "cover", borderRadius: 12, marginBottom: 12 }} />}
         <h1>{d.course.title}</h1>
         {d.course.description && <p className="muted" style={{ marginTop: 4 }}>{d.course.description}</p>}
-        <div style={{ marginTop: 12, background: "var(--chip)", borderRadius: 999, height: 10, overflow: "hidden" }}>
-          <div style={{ width: `${d.progressPct}%`, height: "100%", background: "linear-gradient(90deg,var(--accent),var(--accent2))" }} />
+        <div className="meter" style={{ marginTop: 12 }}>
+          <i style={{ width: `${d.progressPct}%` }}></i>
         </div>
-        <div className="muted" style={{ marginTop: 4 }}>{d.progressPct}% completado · {d.lessons.length} lecciones</div>
+        <div className="meta" style={{ marginTop: 6 }}>{d.progressPct}% completado · {d.lessons.length} lecciones</div>
       </div>
 
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
@@ -173,20 +173,20 @@ export default function CoursePage({ params }: { params: { id: string } }) {
       )}
 
       {d.isManager && (
-        <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="ghost" style={{ marginTop: 0 }} onClick={() => setShowAdd((s) => !s)}>{showAdd ? "Cancelar" : "+ Agregar lección"}</button>
-          <button className="ghost" style={{ marginTop: 0 }} onClick={() => setEditCourse((s) => !s)}>✏️ Editar curso</button>
-          <button className="ghost" style={{ marginTop: 0, color: "#ffb4c4" }} onClick={() => setConfirm({ kind: "course" })}>🗑 Borrar curso</button>
+        <div className="action-bar" style={{ marginTop: 14 }}>
+          <button className="out" onClick={() => setShowAdd((s) => !s)}>{showAdd ? "Cancelar" : "+ Agregar lección"}</button>
+          <button className="out" onClick={() => setEditCourse((s) => !s)}>✏️ Editar curso</button>
+          <button className="cd-danger" onClick={() => setConfirm({ kind: "course" })}>🗑 Borrar curso</button>
         </div>
       )}
 
       {editCourse && d.isManager && (
-        <div className="card" style={{ marginTop: 10 }}>
-          <label>Título</label>
+        <div className="card" style={{ marginTop: 12 }}>
+          <label className="label">Título</label>
           <input value={cForm.title} onChange={(e) => setCForm({ ...cForm, title: e.target.value })} />
-          <label>Descripción</label>
+          <label className="label">Descripción</label>
           <textarea rows={2} value={cForm.description} onChange={(e) => setCForm({ ...cForm, description: e.target.value })} />
-          <label>Portada (imagen)</label>
+          <label className="label">Portada (imagen)</label>
           <FilePicker
             label="Subir portada"
             hint="Horizontal (16:9) se ve mejor"
@@ -195,25 +195,25 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             onPick={(f) => onPickImage(f, (url) => setCForm({ ...cForm, coverUrl: url }))}
             onClear={() => setCForm({ ...cForm, coverUrl: "" })}
           />
-          <div><button onClick={saveCourse} disabled={busy}>Guardar curso</button></div>
+          <div style={{ marginTop: 8 }}><button onClick={saveCourse} disabled={busy}>Guardar curso</button></div>
         </div>
       )}
 
       {showAdd && d.isManager && (
-        <div className="card" style={{ marginTop: 10 }}>
-          <label>Módulo (sección)</label>
+        <div className="card" style={{ marginTop: 12 }}>
+          <label className="label">Módulo (sección)</label>
           <input value={form.moduleName} onChange={(e) => setForm({ ...form, moduleName: e.target.value })} placeholder="Ej: Introducción" />
-          <label>Título de la lección</label>
+          <label className="label">Título de la lección</label>
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <label>URL del video (YouTube no listado / Vimeo / .mp4)</label>
+          <label className="label">URL del video (YouTube no listado / Vimeo / .mp4)</label>
           <input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtu.be/XXXXXXXXXXX" />
-          <label>Contenido / notas (opcional)</label>
+          <label className="label">Contenido / notas (opcional)</label>
           <MarkdownEditor value={form.content} onChange={(v) => setForm({ ...form, content: v })} />
-          <label>Material complementario (enlaces e imágenes externas)</label>
+          <label className="label">Material complementario (enlaces e imágenes externas)</label>
           <ResourceEditor items={formRes} onChange={setFormRes} />
-          <label>Desbloquear en nivel</label>
+          <label className="label">Desbloquear en nivel</label>
           <input value={form.minLevel} onChange={(e) => setForm({ ...form, minLevel: e.target.value })} style={{ width: 80 }} />
-          <div><button onClick={addLesson} disabled={!form.title}>Guardar lección</button></div>
+          <div style={{ marginTop: 8 }}><button onClick={addLesson} disabled={!form.title}>Guardar lección</button></div>
         </div>
       )}
 
@@ -228,16 +228,18 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           {d.lessons.length === 0 && <div className="muted">Este curso aún no tiene lecciones.</div>}
           {modules.map((mod) => (
             <div key={mod.name} style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, textTransform: "uppercase", color: "var(--muted)", letterSpacing: ".5px", margin: "6px 0" }}>{mod.name}</div>
+              <div className="label" style={{ margin: "6px 4px" }}>{mod.name}</div>
               {mod.items.map((l) => (
-                <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", borderRadius: 8, cursor: l.locked ? "not-allowed" : "pointer", background: sel === l.id ? "var(--surface2)" : "transparent", opacity: l.locked ? 0.5 : 1, fontSize: 14 }}>
-                  <span onClick={() => !l.locked && setSel(l.id)} style={{ flex: 1 }}>{l.completed ? "✅ " : l.locked ? "🔒 " : "▶️ "}{l.title}</span>
+                <div key={l.id} className="comm-item" onClick={() => !l.locked && setSel(l.id)} style={{ cursor: l.locked ? "not-allowed" : "pointer", background: sel === l.id ? "var(--surface2)" : "transparent", opacity: l.locked ? 0.5 : 1 }}>
+                  <div className="comm-main" style={{ flex: 1, fontWeight: sel === l.id ? 600 : 400 }}>
+                    {l.completed ? "✅ " : l.locked ? "🔒 " : "▶️ "}{l.title}
+                  </div>
                   {d.isManager && (
-                    <span style={{ display: "flex", gap: 4, fontSize: 12 }}>
-                      <span onClick={() => move(l.id, "up")} title="Subir" style={{ cursor: "pointer" }}>↑</span>
-                      <span onClick={() => move(l.id, "down")} title="Bajar" style={{ cursor: "pointer" }}>↓</span>
-                      <span onClick={() => setConfirm({ kind: "lesson", id: l.id, title: l.title })} title="Borrar" style={{ cursor: "pointer" }}>🗑</span>
-                    </span>
+                    <div style={{ display: "flex", gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                      <button className="icon-btn" onClick={() => move(l.id, "up")} title="Subir">↑</button>
+                      <button className="icon-btn" onClick={() => move(l.id, "down")} title="Bajar">↓</button>
+                      <button className="icon-btn" onClick={() => setConfirm({ kind: "lesson", id: l.id, title: l.title })} title="Borrar">🗑</button>
+                    </div>
                   )}
                 </div>
               ))}
@@ -249,50 +251,49 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           {!current && <div className="muted">Selecciona una lección.</div>}
           {current && (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="row">
                 <h2>{current.title}</h2>
-                {d.isManager && <button className="ghost" style={{ marginTop: 0 }} onClick={() => (editing === current.id ? setEditing(null) : startEdit(current))}>{editing === current.id ? "Cerrar" : "✏️ Editar"}</button>}
+                {d.isManager && <button className="out" style={{ marginTop: 0 }} onClick={() => (editing === current.id ? setEditing(null) : startEdit(current))}>{editing === current.id ? "Cerrar" : "✏️ Editar"}</button>}
               </div>
 
               {editing === current.id && d.isManager ? (
-                <div style={{ marginTop: 10 }}>
-                  <label>Módulo</label><input value={editForm.moduleName} onChange={(e) => setEditForm({ ...editForm, moduleName: e.target.value })} />
-                  <label>Título</label><input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
-                  <label>URL del video</label><input value={editForm.videoUrl} onChange={(e) => setEditForm({ ...editForm, videoUrl: e.target.value })} />
-                  <label>Contenido</label>
+                <div style={{ marginTop: 12 }}>
+                  <label className="label">Módulo</label><input value={editForm.moduleName} onChange={(e) => setEditForm({ ...editForm, moduleName: e.target.value })} />
+                  <label className="label">Título</label><input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+                  <label className="label">URL del video</label><input value={editForm.videoUrl} onChange={(e) => setEditForm({ ...editForm, videoUrl: e.target.value })} />
+                  <label className="label">Contenido</label>
                   <MarkdownEditor value={editForm.content} onChange={(v) => setEditForm({ ...editForm, content: v })} />
-                  <label>Material complementario (enlaces e imágenes externas)</label>
+                  <label className="label">Material complementario (enlaces e imágenes externas)</label>
                   <ResourceEditor items={editRes} onChange={setEditRes} />
-                  <label>Nivel</label><input value={editForm.minLevel} onChange={(e) => setEditForm({ ...editForm, minLevel: e.target.value })} style={{ width: 80 }} />
-                  <div><button onClick={() => saveEdit(current.id)}>Guardar cambios</button></div>
+                  <label className="label">Nivel</label><input value={editForm.minLevel} onChange={(e) => setEditForm({ ...editForm, minLevel: e.target.value })} style={{ width: 80 }} />
+                  <div style={{ marginTop: 8 }}><button onClick={() => saveEdit(current.id)}>Guardar cambios</button></div>
                 </div>
               ) : current.locked ? (
-                <div className="muted" style={{ marginTop: 10 }}>🔒 Se desbloquea en el nivel {current.minLevel} (tienes nivel {d.myLevel}).</div>
+                <div className="muted" style={{ marginTop: 12 }}>🔒 Se desbloquea en el nivel {current.minLevel} (tienes nivel {d.myLevel}).</div>
               ) : (
                 <div style={{ marginTop: 12 }}>
                   {video?.kind === "youtube" || video?.kind === "vimeo" ? (
-                    <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 10, overflow: "hidden", background: "var(--surface2)" }}>
                       <iframe src={video.embedUrl} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={current.title} />
                     </div>
                   ) : video?.kind === "file" ? (
-                    <video src={video.src} controls style={{ width: "100%", borderRadius: 10 }} />
+                    <video src={video.src} controls style={{ width: "100%", borderRadius: 10, background: "var(--surface2)" }} />
                   ) : video?.kind === "link" ? (
-                    <a href={video.href} target="_blank" rel="noreferrer"><button className="ghost">Abrir recurso ↗</button></a>
+                    <a href={video.href} target="_blank" rel="noreferrer"><button className="out">Abrir recurso ↗</button></a>
                   ) : <div className="muted">Esta lección no tiene video.</div>}
                   {current.content && (
                     <div className="md-body" style={{ marginTop: 14 }}
                          dangerouslySetInnerHTML={{ __html: renderMarkdown(current.content) }} />
                   )}
                   <ResourceList items={current.resources} />
-                  {d.isMember && <button onClick={() => complete(current.id)} disabled={current.completed} style={{ background: current.completed ? "var(--surface2)" : undefined }}>{current.completed ? "✅ Completada" : "Marcar como completada"}</button>}
+                  {d.isMember && <button onClick={() => complete(current.id)} disabled={current.completed} className={current.completed ? "out" : ""} style={{ marginTop: 16 }}>{current.completed ? "✅ Completada" : "Marcar como completada"}</button>}
                 </div>
               )}
 
-              {/* Navegación entre lecciones */}
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 18, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-                <button className="ghost" style={{ marginTop: 0, visibility: prevLesson ? "visible" : "hidden" }} onClick={() => goto(prevLesson?.id)}>← Anterior</button>
-                <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>{idx + 1} / {d.lessons.length}</span>
-                <button className="ghost" style={{ marginTop: 0, visibility: nextLesson ? "visible" : "hidden" }} onClick={() => goto(nextLesson?.id)}>Siguiente →</button>
+              <div className="row" style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid var(--hairline)" }}>
+                <button className="out" style={{ visibility: prevLesson ? "visible" : "hidden" }} onClick={() => goto(prevLesson?.id)}>← Anterior</button>
+                <span className="meta" style={{ alignSelf: "center" }}>{idx + 1} / {d.lessons.length}</span>
+                <button className="out" style={{ visibility: nextLesson ? "visible" : "hidden" }} onClick={() => goto(nextLesson?.id)}>Siguiente →</button>
               </div>
             </>
           )}

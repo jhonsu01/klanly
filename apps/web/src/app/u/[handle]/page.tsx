@@ -43,7 +43,7 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
   }, [handle]);
   useEffect(() => { load(); }, [load]);
 
-  if (!p) return <div className="container"><TopBar backHref="/" /><p className="muted">Cargando…</p></div>;
+  if (!p) return <div className="container"><TopBar backHref="/" /><p className="meta">Cargando…</p></div>;
 
   const isMe = meHandle === p.handle;
 
@@ -90,8 +90,8 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
           : <div className="logo" style={{ width: 64, height: 64, fontSize: 28 }}>{p.displayName.charAt(0).toUpperCase()}</div>}
         <div>
           <h1>{p.displayName}</h1>
-          <div className="muted">@{p.handle}{p.country ? ` · ${p.country}` : ""} · desde {new Date(p.memberSince).toLocaleDateString()}</div>
-          {p.bio && <p style={{ marginTop: 8 }}>{p.bio}</p>}
+          <div className="meta">@{p.handle}{p.country ? ` · ${p.country}` : ""} · desde {new Date(p.memberSince).toLocaleDateString()}</div>
+          {p.bio && <p style={{ marginTop: 8, fontSize: 14, lineHeight: 1.6, color: "var(--body)" }}>{p.bio}</p>}
         </div>
       </div>
 
@@ -100,13 +100,13 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
           <button className="ghost" style={{ marginTop: 0 }} onClick={() => setEdit((s) => !s)}>{edit ? "Cancelar" : "✏️ Editar perfil"}</button>
           {edit && (
             <div className="card" style={{ marginTop: 10 }}>
-              <label>Nombre</label>
+              <label className="label">Nombre</label>
               <input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
-              <label>Bio</label>
+              <label className="label">Bio</label>
               <textarea rows={2} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
-              <label>País</label>
+              <label className="label">País</label>
               <input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-              <label>Avatar</label>
+              <label className="label">Avatar</label>
               <FilePicker
                 label="Subir avatar"
                 hint="Cuadrado se ve mejor"
@@ -123,50 +123,50 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
 
       {isMe && (
         <div className="card" style={{ marginTop: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
             <h2>Seguridad (2FA)</h2>
-            <span className="pill" style={{ color: twoFa ? "var(--green)" : "var(--muted)" }}>{twoFa ? "Activo" : "Inactivo"}</span>
+            <span className={`pill ${twoFa ? "ok" : ""}`}>{twoFa ? "Activo" : "Inactivo"}</span>
           </div>
           {!twoFa && !setup && <button onClick={start2fa}>Activar 2FA</button>}
           {!twoFa && setup && (
             <div style={{ marginTop: 10 }}>
-              <div className="muted">1) En tu app (Google Authenticator / Authy) añade una cuenta manual con esta clave:</div>
-              <code style={{ display: "block", background: "var(--input)", padding: "8px 10px", borderRadius: 8, margin: "8px 0", wordBreak: "break-all" }}>{setup.secret}</code>
-              <div className="muted">2) Ingresa el código de 6 dígitos que muestra la app:</div>
-              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: 140 }} />
-              <div><button onClick={enable2fa} disabled={code.length !== 6}>Confirmar y activar</button></div>
+              <div className="meta">1) En tu app (Google Authenticator / Authy) añade una cuenta manual con esta clave:</div>
+              <code style={{ display: "block", fontFamily: "var(--font-mono)", fontSize: 13, letterSpacing: ".06em", background: "var(--input)", border: "1px solid var(--border)", padding: "10px 12px", borderRadius: 10, margin: "8px 0", wordBreak: "break-all" }}>{setup.secret}</code>
+              <div className="meta">2) Ingresa el código de 6 dígitos que muestra la app:</div>
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: "100%", maxWidth: 140 }} />
+              <div style={{ marginTop: 8 }}><button onClick={enable2fa} disabled={code.length !== 6}>Confirmar y activar</button></div>
             </div>
           )}
           {twoFa && (
             <div style={{ marginTop: 10 }}>
-              <div className="muted">Para desactivarlo, ingresa un código actual de tu app:</div>
-              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: 140 }} />
-              <div><button className="ghost" onClick={disable2fa} disabled={code.length !== 6}>Desactivar 2FA</button></div>
+              <div className="meta">Para desactivarlo, ingresa un código actual de tu app:</div>
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" maxLength={6} style={{ width: "100%", maxWidth: 140 }} />
+              <div style={{ marginTop: 8 }}><button className="ghost" onClick={disable2fa} disabled={code.length !== 6}>Desactivar 2FA</button></div>
             </div>
           )}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-            <a href="/afiliados"><button className="ghost" style={{ marginTop: 0 }}>💰 Mi panel de afiliado</button></a>
+            <a href="/afiliados" className="pact" style={{ marginTop: 0, display: "inline-block", textDecoration: "none" }}>💰 Mi panel de afiliado</a>
           </div>
         </div>
       )}
 
       {isMe && (
         <div className="card" style={{ marginTop: 16, borderColor: "var(--red)" }}>
-          <h2 style={{ color: "var(--red)" }}>Zona de peligro</h2>
-          <div className="muted">
+          <h2 className="err">Zona de peligro</h2>
+          <div className="meta">
             Eliminar tu cuenta borra tus datos personales de forma permanente. No hay vuelta atrás.
           </div>
           {elig && !elig.canDelete && (
             <div className="cd-warn" style={{ marginTop: 12 }}>
-              Como productor no puedes eliminar tu cuenta todavía: tienes <b>{elig.activeSubscribers} suscriptor(es)</b> con
+              Como productor no puedes eliminar tu cuenta todavía: tienes <b className="figure">{elig.activeSubscribers} suscriptor(es)</b> con
               acceso pagado vigente. Podrás hacerlo a partir del{" "}
               <b>{elig.lastAccessUntil ? new Date(elig.lastAccessUntil).toLocaleDateString() : "vencimiento"}</b>,
               cuando termine el periodo del último suscriptor.
             </div>
           )}
           <button
-            className="ghost"
-            style={{ marginTop: 12, color: "var(--red)", borderColor: "var(--red)" }}
+            className="cd-danger"
+            style={{ marginTop: 12 }}
             onClick={askDelete}
             disabled={busy}
           >
@@ -194,12 +194,14 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2>Comunidades ({p.communities.length})</h2>
-        {p.communities.length === 0 && <div className="muted">Aún no pertenece a comunidades.</div>}
+        {p.communities.length === 0 && <div className="meta">Aún no pertenece a comunidades.</div>}
         {p.communities.map((c) => (
-          <div className="row" key={c.slug}>
-            <a href={`/c/${c.slug}`} style={{ color: "var(--text)", textDecoration: "none" }}>{c.name}</a>
-            <div className="muted">{c.role} · Nv {c.level} · {c.points} pts</div>
-          </div>
+          <a href={`/c/${c.slug}`} key={c.slug} className="comm-item">
+            <div className="comm-main">
+              <div className="comm-name">{c.name}</div>
+              <div className="meta">{c.role} · Nivel <span className="figure">{c.level}</span> · <span className="figure">{c.points}</span> pts</div>
+            </div>
+          </a>
         ))}
       </div>
     </div>

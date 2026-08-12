@@ -28,7 +28,7 @@ export default function AffiliatesPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (!d) return <div className="container"><TopBar backHref="/" backLabel="Inicio" title="Afiliados" /><p className="muted" style={{ marginTop: 20 }}>Cargando…</p></div>;
+  if (!d) return <div className="container"><TopBar backHref="/" backLabel="Inicio" title="Afiliados" /><div className="card" style={{ marginTop: 20, textAlign: "center" }}><p className="muted">Cargando…</p></div></div>;
 
   const savePm = async () => {
     try {
@@ -48,20 +48,39 @@ export default function AffiliatesPage() {
   return (
     <div className="container">
       <TopBar backHref="/" backLabel="Inicio" title="Afiliados" />
-      <div className="brand" style={{ marginTop: 12 }}><div className="logo">$</div><div><h1>Afiliados</h1><div className="muted">Tus comisiones y liquidaciones</div></div></div>
+      <div className="brand" style={{ marginTop: 12 }}>
+        <div className="logo">$</div>
+        <div>
+          <h1>Afiliados</h1>
+          <div className="muted">Tus comisiones y liquidaciones</div>
+        </div>
+      </div>
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
       <div className="grid" style={{ marginTop: 16 }}>
-        <div className="card"><div className="muted">Disponible para retirar</div><div style={{ fontSize: 28, fontWeight: 700, color: "var(--green)" }}>{money(b.availableCents)}</div></div>
-        <div className="card"><div className="muted">Pendiente (aún en net 30/60)</div><div style={{ fontSize: 28, fontWeight: 700, color: "var(--gold)" }}>{money(b.pendingCents)}</div></div>
-        <div className="card"><div className="muted">En proceso de pago</div><div style={{ fontSize: 22, fontWeight: 700 }}>{money(b.requestedCents)}</div></div>
-        <div className="card"><div className="muted">Pagado (histórico)</div><div style={{ fontSize: 22, fontWeight: 700 }}>{money(b.paidCents)}</div></div>
+        <div className="card">
+          <div className="label">Disponible para retirar</div>
+          <div className="figure-lg" style={{ color: "var(--green)", marginTop: 8 }}>{money(b.availableCents)}</div>
+        </div>
+        <div className="card">
+          <div className="label">Pendiente (aún en net 30/60)</div>
+          <div className="figure-lg" style={{ color: "var(--gold)", marginTop: 8 }}>{money(b.pendingCents)}</div>
+        </div>
+        <div className="card">
+          <div className="label">En proceso de pago</div>
+          <div className="figure" style={{ color: "var(--text)", marginTop: 8 }}>{money(b.requestedCents)}</div>
+        </div>
+        <div className="card">
+          <div className="label">Pagado (histórico)</div>
+          <div className="figure" style={{ color: "var(--body)", marginTop: 8 }}>{money(b.paidCents)}</div>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2>Medio de pago (dónde recibes)</h2>
-        <label>Tipo</label>
-        <select value={pm.type} onChange={(e) => setPm({ ...pm, type: e.target.value })}>
+        
+        <label className="label" style={{ display: "block", marginTop: 16 }}>Tipo</label>
+        <select value={pm.type} onChange={(e) => setPm({ ...pm, type: e.target.value })} style={{ width: "100%" }}>
           <option value="nequi">Nequi</option>
           <option value="daviplata">Daviplata</option>
           <option value="bancolombia">Bancolombia</option>
@@ -69,25 +88,28 @@ export default function AffiliatesPage() {
           <option value="paypal">PayPal</option>
           <option value="otro">Otro</option>
         </select>
-        <label>Nombre del titular (opcional)</label>
-        <input value={pm.accountName} onChange={(e) => setPm({ ...pm, accountName: e.target.value })} placeholder="Ej: Jhon Supelano" />
-        <label>Número de cuenta o llave</label>
-        <input value={pm.details} onChange={(e) => setPm({ ...pm, details: e.target.value })} placeholder="Ej: 300 123 4567 / correo@… / nº cuenta" />
-        <button onClick={savePm} disabled={!pm.details}>Guardar medio de pago</button>
+        
+        <label className="label" style={{ display: "block", marginTop: 16 }}>Nombre del titular (opcional)</label>
+        <input value={pm.accountName} onChange={(e) => setPm({ ...pm, accountName: e.target.value })} placeholder="Ej: Jhon Supelano" style={{ width: "100%" }} />
+        
+        <label className="label" style={{ display: "block", marginTop: 16 }}>Número de cuenta o llave</label>
+        <input value={pm.details} onChange={(e) => setPm({ ...pm, details: e.target.value })} placeholder="Ej: 300 123 4567 / correo@… / nº cuenta" style={{ width: "100%" }} />
+        
+        <button onClick={savePm} disabled={!pm.details} style={{ width: "100%", marginTop: 20 }}>Guardar medio de pago</button>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2>Mis links de afiliado</h2>
-        {approved.length === 0 && <div className="muted">Aún no eres afiliado aprobado en ninguna comunidad. Entra a una comunidad con afiliados y solicita unirte.</div>}
+        {approved.length === 0 && <p className="muted">Aún no eres afiliado aprobado en ninguna comunidad. Entra a una comunidad con afiliados y solicita unirte.</p>}
         {approved.map((a) => (
-          <div className="row" key={a.communityId}>
+          <div className="row" key={a.communityId} style={{ flexDirection: "column", alignItems: "stretch", gap: 12 }}>
             <div>
-              <a href={`/c/${a.slug}`} style={{ color: "var(--text)", textDecoration: "none", fontWeight: 600 }}>{a.name}</a>
-              <div className="muted">{a.commissionPct}% · Net {a.payoutTermsDays} días · code {a.code}</div>
+              <a href={`/c/${a.slug}`} style={{ color: "var(--text)", textDecoration: "none", fontWeight: 600, fontSize: 16 }}>{a.name}</a>
+              <div className="meta" style={{ marginTop: 4 }}>{a.commissionPct}% comisión · Net {a.payoutTermsDays} días · Código: {a.code}</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="ghost" style={{ marginTop: 0 }} onClick={() => copy(a.code, a.slug)}>Copiar link</button>
-              <button style={{ marginTop: 0 }} onClick={() => requestPayout(a.communityId)}>Retirar</button>
+              <button style={{ flex: 1 }} onClick={() => copy(a.code, a.slug)}>Copiar link</button>
+              <button style={{ flex: 1 }} onClick={() => requestPayout(a.communityId)}>Retirar</button>
             </div>
           </div>
         ))}
@@ -95,13 +117,22 @@ export default function AffiliatesPage() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2>Movimientos recientes</h2>
-        {d.recent.length === 0 && <div className="muted">Sin comisiones aún.</div>}
-        {d.recent.map((r, i) => (
-          <div className="row" key={i}>
-            <div>{money(r.amountCents, r.currency)} <span className="pill">{r.status === "paid" ? "pagado" : r.inPayout ? "en pago" : new Date(r.availableAt).getTime() <= Date.now() ? "disponible" : "pendiente"}</span></div>
-            <div className="muted">disponible {new Date(r.availableAt).toLocaleDateString()}</div>
-          </div>
-        ))}
+        {d.recent.length === 0 && <p className="muted">Sin comisiones aún.</p>}
+        {d.recent.map((r, i) => {
+          const isPaid = r.status === "paid";
+          const statusText = isPaid ? "pagado" : r.inPayout ? "en pago" : new Date(r.availableAt).getTime() <= Date.now() ? "disponible" : "pendiente";
+          const pillClass = isPaid ? "ok" : (r.inPayout ? "brand" : (new Date(r.availableAt).getTime() <= Date.now() ? "ok" : "bad"));
+          
+          return (
+            <div className="row" key={i} style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span className="figure">{money(r.amountCents, r.currency)}</span>
+                <span className={`pill ${pillClass}`}>{statusText}</span>
+              </div>
+              <div className="meta">Disponible {new Date(r.availableAt).toLocaleDateString()}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

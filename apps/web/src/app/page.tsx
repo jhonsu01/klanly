@@ -135,7 +135,7 @@ export default function Home() {
 
   return (
     <div className="container">
-      <div className="brand"><div className="logo">K</div><div><h1>Klanly</h1><div className="muted">Plataforma de comunidades de pago · MVP F0/F1</div></div></div>
+      <div className="brand"><div className="logo">K</div><div><div className="label">Plataforma de comunidades</div><h1>Klanly</h1><div className="meta">Comunidades de pago · membresías y cursos</div></div></div>
 
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
 
@@ -299,18 +299,23 @@ export default function Home() {
 
       {/* Listado */}
       <div className="card" style={{ marginTop: 16 }}>
-        <h2>Comunidades ({communities.length})</h2>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
+          <h2 style={{ margin: 0 }}>Comunidades</h2>
+          <span className="figure">{communities.length}</span>
+        </div>
         {communities.length === 0 && <div className="muted">Aún no hay comunidades. Crea la primera arriba.</div>}
         {communities.map((c) => (
-          <div className="row" key={c.id}>
-            <div>
-              <a href={`/c/${c.slug}`} style={{ fontSize: 15, textDecoration: "none", color: "var(--text)" }}>{c.name}</a>
-              <div className="muted">
-                {c.priceCents === 0 ? "Free" : `$${(c.priceCents / 100).toFixed(2)}/${c.billingPeriod}`} · /{c.slug}
+          <a className="comm-item" key={c.id} href={`/c/${c.slug}`}>
+            <div className="comm-main">
+              <div className="comm-name">{c.name}</div>
+              <div className="meta" style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3 }}>
+                <span>{c.priceCents === 0 ? "Gratis" : money(c.priceCents, c.currency)}</span>
+                {c.priceCents !== 0 && <><span className="dot" /><span>{c.billingPeriod === "month" ? "mensual" : c.billingPeriod}</span></>}
+                <span className="dot" /><span>/{c.slug}</span>
               </div>
             </div>
-            <a href={`/c/${c.slug}`}><button className="ghost" style={{ marginTop: 0 }}>Abrir →</button></a>
-          </div>
+            <span className="comm-open">Abrir →</span>
+          </a>
         ))}
       </div>
 

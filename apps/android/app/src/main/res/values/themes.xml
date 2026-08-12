@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      Tema Klanly Nocturno (app de usuario).
+
+      Deriva del tema Material OSCURO del framework (sin AppCompat, igual que
+      antes). Sirve para dos cosas:
+        1. Evitar el "flash blanco" al arrancar: como windowBackground es oscuro,
+           el intervalo entre el lanzamiento y la primera pintura del WebView
+           tambien es oscuro, igual que la web Nocturna que carga.
+        2. Que la status bar y la navigation bar acompañen el tema oscuro
+           (fondo #08080A, iconos claros).
+
+      Nota: no se usa windowLightNavigationBar para no comprometer minSdk 24
+      (ese attr es API 27+); con navigationBarColor oscuro basta.
+    -->
+    <style name="Theme.Klanly.Nocturno" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/nocturno_bg</item>
+        <item name="android:colorBackground">@color/nocturno_bg</item>
+        <item name="android:statusBarColor">@color/nocturno_bg</item>
+        <item name="android:navigationBarColor">@color/nocturno_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+</resources>

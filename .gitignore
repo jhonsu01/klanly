@@ -36,3 +36,6 @@ Thumbs.db
 # Compilacion local (Gradle)
 apps/android/local.properties
 dist/
+
+# Respaldos de la conversion automatica (zcode_convert.mjs)
+*.bak
