@@ -1,41 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Klanly Nocturno — sistema visual v1
+   Paleta y tipografia del rediseno (claude.ai/design). Oscuro como tema
+   principal; se conserva el tema claro armonizado con los mismos tokens.
+   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  --bg: #0f0f13;
-  --panel: #1a1a22;
-  --border: #2a2a36;
-  --text: #e8e8f0;
-  --muted: #9a9ab0;
-  --accent: #5b3df5;
-  --accent2: #8b5cf6;
-  --gold: #f6c667;
-  --green: #34d399;
-  --red: #f87171;
-  --input: #12121a;
-  --surface2: #24242f;
-  --chip: #20202a;
-  --glass: rgba(15, 15, 19, .72);
+  /* Superficies */
+  --bg: #08080A;
+  --panel: #101016;
+  --surface2: #17171F;
+  --chip: #17171F;
+  --input: #0C0C11;
+  --border: #22222E;
+  --border2: #2C2C3A;
+  --hairline: #1A1A24;
+  /* Texto */
+  --text: #EDEDF3;
+  --body: #B9B9C9;
+  --muted: #8B8B9E;
+  --dim: #5F5F72;
+  /* Marca y estado */
+  --accent: #5B3DF5;
+  --accent-hover: #6D51FF;
+  --accent2: #8B5CF6;
+  --accent3: #A78BFA;
+  --gold: #F6C667;
+  --green: #34D399;
+  --red: #F87171;
+  --glass: rgba(8, 8, 10, .82);
+  /* Tipografia */
+  --font-sans: var(--font-geist-sans), Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+  /* Sombra del boton primario */
+  --glow: 0 6px 20px rgba(91, 61, 245, .35);
+  /* Trama de puntos del fondo */
+  --dots: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, .045) 1px, transparent 0);
 }
 :root[data-theme="light"] {
-  --bg: #f4f4f8;
-  --panel: #ffffff;
-  --border: #e4e4ee;
-  --text: #1a1a22;
-  --muted: #6b6b7b;
-  --accent: #5b3df5;
-  --accent2: #7c3aed;
-  --gold: #b07d00;
-  --green: #12905a;
-  --red: #d64545;
-  --input: #f1f1f7;
-  --surface2: #ececf3;
-  --chip: #ececf3;
-  --glass: rgba(244, 244, 248, .78);
+  --bg: #F4F4F8;
+  --panel: #FFFFFF;
+  --surface2: #ECECF3;
+  --chip: #ECECF3;
+  --input: #F1F1F7;
+  --border: #E4E4EE;
+  --border2: #D6D6E2;
+  --hairline: #ECECF3;
+  --text: #12121A;
+  --body: #3A3A4A;
+  --muted: #5F5F72;
+  --dim: #86869A;
+  --accent: #5B3DF5;
+  --accent-hover: #4A2FE0;
+  --accent2: #7C3AED;
+  --accent3: #6D28D9;
+  --gold: #A67200;
+  --green: #12905A;
+  --red: #D64545;
+  --glass: rgba(244, 244, 248, .82);
+  --dots: radial-gradient(circle at 1px 1px, rgba(0, 0, 0, .05) 1px, transparent 0);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
+  background-image: var(--dots);
+  background-size: 24px 24px;
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 a { color: var(--accent2); }
 .container { max-width: 900px; margin: 0 auto; padding: 32px 20px 80px; }
@@ -45,26 +77,54 @@ a { color: var(--accent2); }
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   display: grid; place-items: center; font-weight: 800; color: #fff; font-size: 21px;
 }
-h1 { font-size: 24px; } h2 { font-size: 17px; margin-bottom: 12px; }
+h1 { font-size: 26px; font-weight: 600; letter-spacing: -.025em; line-height: 1.15; }
+h2 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin-bottom: 12px; }
 .muted { color: var(--muted); font-size: 13px; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
 @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
-label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+/* Micro-etiqueta en mono, como en el sistema visual */
+label {
+  display: block; margin: 14px 0 7px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--dim);
+}
 input, textarea, select {
   width: 100%; background: var(--input); border: 1px solid var(--border); color: var(--text);
-  border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit;
+  border-radius: 10px; padding: 12px 14px; font-size: 14px; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+input::placeholder, textarea::placeholder { color: var(--dim); }
+input:focus, textarea:focus, select:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 61, 245, .16);
 }
 button {
-  margin-top: 14px; border: none; border-radius: 8px; padding: 10px 16px;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  background: var(--accent); color: #fff;
+  margin-top: 14px; border: none; border-radius: 10px; padding: 11px 18px;
+  font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  background: var(--accent); color: #fff; box-shadow: var(--glow);
+  transition: background .15s, border-color .15s, transform .1s;
 }
-button.ghost { background: var(--surface2); color: var(--text); }
+button:hover:not(:disabled) { background: var(--accent-hover); }
+button:active:not(:disabled) { transform: scale(.985); }
+/* Secundario: relleno elevado con borde */
+button.ghost {
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border2); box-shadow: none;
+}
+button.ghost:hover:not(:disabled) { background: var(--chip); border-color: var(--accent2); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 .row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
 .row:last-child { border-bottom: none; }
-.pill { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--gold); }
+/* Insignia de estado: un solo lenguaje para membresias, comprobantes y payouts */
+.pill {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 6px;
+  background: rgba(246, 198, 103, .1); border: 1px solid rgba(246, 198, 103, .3); color: var(--gold);
+}
+.pill.ok    { background: rgba(52, 211, 153, .12); border-color: rgba(52, 211, 153, .32); color: var(--green); }
+.pill.bad   { background: rgba(248, 113, 113, .1); border-color: rgba(248, 113, 113, .3); color: var(--red); }
+.pill.brand { background: rgba(91, 61, 245, .14); border-color: rgba(139, 92, 246, .34); color: var(--accent3); }
 .out { margin-top: 12px; font-size: 12px; color: var(--muted); white-space: pre-wrap; word-break: break-word; }
 .err { color: var(--red); }
 .ok { color: var(--green); }
@@ -339,4 +399,165 @@ input, textarea, select { max-width: 100%; }
   .card { padding: 16px; }
   /* Los grupos de botones se apilan a lo ancho en vez de desbordar */
   .card > div > button, .card > button { max-width: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Klanly Nocturno — componentes del sistema visual
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Micro-etiqueta y cifras en mono (01 · SUPERFICIES, $4.820, ● APROBADO) */
+.label {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+}
+.meta {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  color: var(--dim);
+}
+.figure {
+  font-family: var(--font-mono); font-size: 24px; font-weight: 600;
+  color: var(--gold); letter-spacing: -.01em;
+}
+.figure-lg { font-family: var(--font-mono); font-size: 30px; font-weight: 600; color: var(--gold); }
+.dot { width: 3px; height: 3px; border-radius: 50%; background: var(--border2); flex: none; }
+
+/* ── Pestañas con subrayado (reemplazan los botones-pastilla) ───────────── */
+.tabs {
+  display: flex; align-items: center; gap: 24px;
+  margin-top: 20px; border-bottom: 1px solid var(--hairline);
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none; display: flex; align-items: center; gap: 7px;
+  padding: 0 0 13px; margin-bottom: -1px;
+  border: none; border-bottom: 2px solid transparent; border-radius: 0;
+  background: none; box-shadow: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 500; white-space: nowrap;
+  color: var(--muted); margin-top: 0;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover:not(:disabled) { background: none; color: var(--text); }
+.tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--accent2); }
+.tab .count { font-family: var(--font-mono); font-size: 10.5px; color: var(--dim); }
+.tab.active .count { color: var(--accent3); }
+/* Contador que exige atención (comprobantes por revisar) */
+.tab .count.alert {
+  background: var(--gold); color: #08080A; font-weight: 600;
+  border-radius: 5px; padding: 2px 5px; font-size: 10px;
+}
+
+/* ── Anillo de nivel: el nivel se lee como medidor, no como adorno ──────── */
+.ring {
+  position: relative; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: conic-gradient(var(--accent2) 0 var(--pct, 0%), var(--border) var(--pct, 0%) 100%);
+}
+.ring > .ring-in {
+  border-radius: 50%; background: var(--surface2);
+  display: grid; place-items: center;
+  font-weight: 600; color: var(--text);
+}
+.meter { height: 6px; border-radius: 3px; background: var(--surface2); overflow: hidden; }
+.meter > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+/* ── Barra inferior de navegación (solo móvil) ──────────────────────────── */
+.bottomnav { display: none; }
+@media (max-width: 700px) {
+  .bottomnav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    display: flex; padding: 6px 4px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    background: var(--glass); border-top: 1px solid var(--hairline);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+  }
+  .bottomnav button {
+    flex: 1; min-width: 0; height: 54px; margin-top: 0; padding: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    background: none; border: none; box-shadow: none; color: var(--dim);
+  }
+  .bottomnav button:hover:not(:disabled) { background: none; }
+  .bottomnav .bn-i { font-size: 16px; line-height: 1; }
+  .bottomnav .bn-t {
+    font-family: var(--font-mono); font-size: 9.5px; font-weight: 500; letter-spacing: .08em;
+  }
+  .bottomnav button.active { color: var(--accent3); }
+  /* Sitio para la barra al final del scroll */
+  body.has-bottomnav .container { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  /* Los toasts no deben quedar debajo de la barra */
+  body.has-bottomnav .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
+
+/* ── Acción principal anclada abajo (móvil) ─────────────────────────────── */
+.action-bar { margin-top: 16px; }
+.action-bar button { width: 100%; min-height: 50px; border-radius: 13px; font-size: 14.5px; }
+@media (max-width: 700px) {
+  .action-bar {
+    position: sticky; bottom: 0; z-index: 40; margin: 16px -16px -16px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--glass); border-top: 1px solid var(--hairline);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+}
+
+/* ── Indicador de pasos ─────────────────────────────────────────────────── */
+.steps { display: flex; gap: 5px; margin: 12px 0 4px; }
+.steps > i { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+.steps > i.on { background: var(--accent); }
+
+/* ── Objetivos táctiles de 44px en móvil ────────────────────────────────── */
+@media (max-width: 700px) {
+  button, .res-link, select { min-height: 44px; }
+  .tab { min-height: 44px; padding-bottom: 11px; align-items: center; }
+  .bottomnav button { min-height: 54px; }
+  input, textarea { font-size: 15px; } /* evita el zoom automático de iOS */
+}
+
+/* ── Hoja inferior del botón "Más" de la barra de navegación ────────────── */
+.sheet-overlay {
+  position: fixed; inset: 0; z-index: 70; background: rgba(0, 0, 0, .6);
+  display: flex; align-items: flex-end;
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.sheet {
+  width: 100%; max-height: 78vh; overflow-y: auto;
+  background: var(--panel); border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  animation: sheet-up .18s ease-out;
+}
+@keyframes sheet-up { from { transform: translateY(14px); opacity: .6; } to { transform: none; opacity: 1; } }
+.sheet-item {
+  width: 100%; margin: 0 0 8px; min-height: 50px;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface2); border: 1px solid var(--border); box-shadow: none;
+  color: var(--text); font-size: 14px; border-radius: 12px; padding: 0 14px;
+}
+.sheet-item:hover:not(:disabled) { background: var(--chip); border-color: var(--accent2); }
+
+/* ── Tarjeta de post del feed ───────────────────────────────────────────── */
+.post {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+  padding: 16px 17px; margin-bottom: 12px;
+}
+.post:last-child { margin-bottom: 0; }
+.post-av {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  background: var(--surface2); display: grid; place-items: center;
+  font-size: 10.5px; font-weight: 600; color: var(--muted);
+}
+.post-actions {
+  display: flex; gap: 8px; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+.pact {
+  margin-top: 0; display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 13px; border-radius: 9px; font-size: 12px; font-weight: 500;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted); box-shadow: none;
+}
+.pact:hover:not(:disabled) { background: var(--chip); border-color: var(--accent2); color: var(--text); }
+.pact.on {
+  background: rgba(91, 61, 245, .14); border-color: rgba(139, 92, 246, .34); color: var(--accent3);
 }

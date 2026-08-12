@@ -73,8 +73,14 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [income, setIncome] = useState<Income | null>(null);
   const [meId, setMeId] = useState<string | null>(null);
   const [viewer, setViewer] = useState<string | null>(null);
+  const [showMore, setShowMore] = useState(false);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
+  // Pestañas que quedan detrás del botón "Más" de la barra inferior
+  const moreTabs: Tab[] = ["calendar", "members", "about", "affiliates", "income", "review", "settings"];
+  const goTab = (t: Tab) => { setTab(t); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  // Iniciales del autor para el avatar del feed
+  const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
   const load = useCallback(async () => {
     try {
@@ -113,6 +119,13 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     } catch (e: any) { flash(e.message, false); }
   }, [slug]);
   useEffect(() => { load(); }, [load]);
+
+  // La barra inferior existe solo en esta pantalla: marcamos el body para que
+  // el contenedor reserve el espacio y los toasts no queden debajo.
+  useEffect(() => {
+    document.body.classList.add("has-bottomnav");
+    return () => document.body.classList.remove("has-bottomnav");
+  }, []);
 
   // Capturar ?ref= del link de afiliado
   useEffect(() => {
@@ -166,6 +179,12 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const isOwner = c.myMembership?.role === "owner";
   const isManager = isOwner || c.myMembership?.role === "admin";
   const isFree = c.priceCents === 0 || c.billingPeriod === "free";
+  // Días de acceso restantes (se muestran como insignia en el encabezado)
+  const daysLeft = c.myMembership?.accessUntil && !isFree
+    ? Math.max(0, Math.ceil((new Date(c.myMembership.accessUntil).getTime() - Date.now()) / 86400000))
+    : null;
+  // Paso visible del flujo de activacion: transferir -> adjuntar -> revision
+  const payStep = c.myOrderStatus === "awaiting_review" ? 3 : proofUrl ? 2 : 1;
 
   const join = async () => {
     try {
@@ -256,8 +275,12 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   };
   const openNotis = async () => { setShowNotis((s) => !s); if (!showNotis && notis.unread > 0) { await api(`/notifications/read`, "POST").catch(() => {}); setNotis((n) => ({ ...n, unread: 0 })); } };
 
-  const TabBtn = ({ id, label }: { id: Tab; label: string }) => (
-    <button className={tab === id ? "" : "ghost"} style={{ marginTop: 0 }} onClick={() => setTab(id)}>{label}</button>
+  // Pestaña con indicador de subrayado y contador en mono (sistema Nocturno)
+  const TabBtn = ({ id, label, count, alert }: { id: Tab; label: string; count?: number; alert?: boolean }) => (
+    <button className={`tab${tab === id ? " active" : ""}`} onClick={() => setTab(id)}>
+      {label}
+      {count !== undefined && count > 0 && <span className={`count${alert ? " alert" : ""}`}>{count}</span>}
+    </button>
   );
 
   return (
@@ -282,10 +305,21 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       )}
 
       <div className="brand" style={{ marginTop: 12 }}>
-        <div className="logo">{c.name.charAt(0).toUpperCase()}</div>
-        <div>
+        {c.iconUrl
+          ? <img src={c.iconUrl} alt="" style={{ width: 46, height: 46, borderRadius: 13, objectFit: "cover", flex: "none" }} />
+          : <div className="logo" style={{ width: 46, height: 46, borderRadius: 13, fontSize: 22 }}>{c.name.charAt(0).toUpperCase()}</div>}
+        <div style={{ minWidth: 0 }}>
           <h1>{c.name}</h1>
-          <div className="muted">{isFree ? "Free" : `${money(c.priceCents, c.currency)}/${c.billingPeriod}`} · {c.memberCount} miembros · /{c.slug}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginTop: 7 }}>
+            <span className="meta" style={{ color: "var(--muted)" }}>{c.memberCount} MIEMBROS</span>
+            <span className="dot" />
+            <span className="meta" style={{ color: isFree ? "var(--muted)" : "var(--gold)" }}>
+              {isFree ? "GRATIS" : `${money(c.priceCents, c.currency)} / ${c.billingPeriod === "month" ? "MES" : c.billingPeriod === "year" ? "AÑO" : "ÚNICO"}`}
+            </span>
+            <span className="dot" />
+            <span className="meta">/{c.slug}</span>
+            {daysLeft !== null && <span className="pill ok">Tu acceso · {daysLeft} días</span>}
+          </div>
         </div>
       </div>
       {c.description && <p className="muted" style={{ marginTop: 8 }}>{c.description}</p>}
@@ -301,35 +335,88 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       )}
       {isPending && (
         <div className="card" style={{ marginTop: 16 }}>
-          <h2>{isPastDue ? "Renovar acceso (comprobante)" : "Pago manual (comprobante)"}</h2>
-          {isPastDue && <div className="err" style={{ marginBottom: 6 }}>Tu acceso venció{c.myMembership?.accessUntil ? ` el ${new Date(c.myMembership.accessUntil).toLocaleDateString()}` : ""}. Renueva para recuperar el acceso.</div>}
-          {c.myOrderStatus === "awaiting_review" ? (
-            <div className="out ok">✅ Tu comprobante está <b>en revisión</b>. El productor lo aprobará pronto; te notificaremos por correo.</div>
-          ) : (<>
-          {c.myOrderStatus === "failed" && <div className="err" style={{ marginBottom: 6 }}>Tu comprobante anterior fue rechazado. Adjunta uno nuevo.</div>}
-          <div className="muted">Transfiere {money(c.priceCents, c.currency)} a una de estas cuentas y sube la foto/captura de tu comprobante:</div>
-          {(c.manualAccounts && c.manualAccounts.length > 0) ? (
-            <div style={{ margin: "10px 0" }}>
-              {c.manualAccounts.map((a, i) => (
-                <div key={i} className="row" style={{ padding: "8px 0" }}>
-                  <div><b>{a.bank}</b> · {a.number}<div className="muted">{a.name}</div></div>
-                  <button className="ghost" style={{ marginTop: 0, fontSize: 12, padding: "4px 10px" }} onClick={() => { navigator.clipboard?.writeText(a.number); flash("Número copiado ✔"); }}>Copiar</button>
-                </div>
-              ))}
+          {/* Activar acceso en 3 pasos: transferir → adjuntar → revisión */}
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <h2 style={{ marginBottom: 0 }}>{isPastDue ? "Renovar mi acceso" : "Activar mi acceso"}</h2>
+            <span className="label">PASO {payStep} DE 3</span>
+          </div>
+          <div className="steps">
+            <i className={payStep >= 1 ? "on" : ""} />
+            <i className={payStep >= 2 ? "on" : ""} />
+            <i className={payStep >= 3 ? "on" : ""} />
+          </div>
+
+          {isPastDue && (
+            <div className="err" style={{ marginTop: 10 }}>
+              Tu acceso venció{c.myMembership?.accessUntil ? ` el ${new Date(c.myMembership.accessUntil).toLocaleDateString()}` : ""}. Renueva para recuperarlo.
             </div>
-          ) : (
-            <div className="muted" style={{ margin: "8px 0" }}>El productor aún no configuró cuentas de transferencia.</div>
           )}
-          <label>Comprobante (imagen)</label>
-          <FilePicker
-            label="Adjuntar comprobante"
-            hint="Foto o captura de la transferencia · se comprime sola"
-            value={proofUrl || undefined}
-            busy={busy}
-            onPick={(f) => uploadProof(f)}
-            onClear={() => setProofUrl("")}
-          />
-          <button onClick={payManual} disabled={!proofUrl || busy}>{busy ? "Subiendo…" : "Enviar comprobante"}</button>
+
+          {c.myOrderStatus === "awaiting_review" ? (
+            <div style={{ marginTop: 14, padding: "16px 17px", borderRadius: 16, background: "rgba(52,211,153,.08)", border: "1px solid rgba(52,211,153,.28)" }}>
+              <div className="label" style={{ color: "var(--green)" }}>● EN REVISIÓN</div>
+              <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.6, color: "var(--body)" }}>
+                Recibimos tu comprobante. El productor lo revisa y te avisamos por correo.
+                Suele tardar menos de 12 horas.
+              </div>
+            </div>
+          ) : (<>
+            {c.myOrderStatus === "failed" && (
+              <div className="err" style={{ marginTop: 10 }}>Tu comprobante anterior fue rechazado. Adjunta uno nuevo.</div>
+            )}
+
+            {/* El monto exacto es la cifra protagonista */}
+            <div style={{ marginTop: 14, padding: "16px 17px", borderRadius: 16, background: "rgba(246,198,103,.07)", border: "1px solid rgba(246,198,103,.22)" }}>
+              <div className="label" style={{ color: "var(--gold)" }}>Transfiere exactamente</div>
+              <div className="figure-lg" style={{ marginTop: 8 }}>{money(c.priceCents, c.currency)}</div>
+              <div className="muted" style={{ marginTop: 6 }}>
+                {c.name} · {c.billingPeriod === "month" ? "1 mes" : c.billingPeriod === "year" ? "1 año" : "acceso"} de acceso
+              </div>
+            </div>
+
+            {(c.manualAccounts && c.manualAccounts.length > 0) ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                {c.manualAccounts.map((a, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, background: "var(--surface2)", border: "1px solid var(--border)" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 11, background: "var(--input)", display: "grid", placeItems: "center", fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--accent3)", flex: "none" }}>
+                      {a.bank.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{a.bank}</div>
+                      <div className="meta" style={{ marginTop: 3, color: "var(--muted)", overflowWrap: "anywhere" }}>{a.number}</div>
+                      {a.name && <div className="muted" style={{ fontSize: 12 }}>{a.name}</div>}
+                    </div>
+                    <button
+                      className="ghost"
+                      style={{ marginTop: 0, minHeight: 44, fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: ".08em" }}
+                      onClick={() => { navigator.clipboard?.writeText(a.number); flash("Número copiado ✔"); }}
+                    >COPIAR</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="muted" style={{ margin: "12px 0" }}>El productor aún no configuró cuentas de transferencia.</div>
+            )}
+
+            <label>Comprobante</label>
+            <FilePicker
+              label="Toma la foto del comprobante"
+              hint="o elígela de la galería · se comprime sola"
+              value={proofUrl || undefined}
+              busy={busy}
+              onPick={(f) => uploadProof(f)}
+              onClear={() => setProofUrl("")}
+            />
+            <div className="muted" style={{ textAlign: "center", marginTop: 12, lineHeight: 1.6 }}>
+              El productor la revisa y te avisamos por correo. Suele tardar menos de 12 horas.
+            </div>
+
+            {/* Acción principal anclada: no se pierde al final del scroll */}
+            <div className="action-bar">
+              <button onClick={payManual} disabled={!proofUrl || busy}>
+                {busy ? "Subiendo…" : "Enviar comprobante"}
+              </button>
+            </div>
           </>)}
         </div>
       )}
@@ -339,17 +426,17 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, margin: "20px 0 12px", flexWrap: "wrap" }}>
-        <TabBtn id="community" label="Community" />
-        <TabBtn id="classroom" label="Classroom" />
-        <TabBtn id="calendar" label="Calendar" />
-        <TabBtn id="leaderboard" label="Leaderboards" />
-        <TabBtn id="members" label={`Members (${members.length})`} />
-        <TabBtn id="about" label="About" />
-        {(c.affiliateEnabled || isManager) && <TabBtn id="affiliates" label="Afiliados" />}
+      <div className="tabs">
+        <TabBtn id="community" label="Comunidad" />
+        <TabBtn id="classroom" label="Classroom" count={courses.length} />
+        <TabBtn id="calendar" label="Calendario" count={evs.length} />
+        <TabBtn id="leaderboard" label="Ranking" />
+        <TabBtn id="members" label="Miembros" count={members.length} />
         {isMember && <TabBtn id="chat" label="Chat" />}
+        {(c.affiliateEnabled || isManager) && <TabBtn id="affiliates" label="Afiliados" />}
         {isManager && <TabBtn id="income" label="Ingresos" />}
-        {isManager && <TabBtn id="review" label={`Comprobantes (${pending.length})`} />}
+        {isManager && <TabBtn id="review" label="Comprobantes" count={pending.length} alert />}
+        <TabBtn id="about" label="Acerca de" />
         {isOwner && <TabBtn id="settings" label="Ajustes" />}
       </div>
 
@@ -364,15 +451,31 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
           <div style={{ marginTop: 16 }}>
             {posts.length === 0 && <div className="muted">Aún no hay publicaciones.</div>}
             {posts.map((p) => (
-              <div key={p.id} style={{ borderBottom: "1px solid var(--border)", padding: "12px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <div>
-                    {(p.pinned || p.category) && <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>{p.pinned && <span className="pill" style={{ color: "var(--accent2)" }}>📌 Fijado</span>}{p.category && <span className="pill">{p.category}</span>}</div>}
-                    {p.title && <div style={{ fontWeight: 600 }}>{p.title}</div>}
-                    <div>{p.body}</div>
-                    <a href={`/u/${p.authorHandle}`} className="muted" style={{ textDecoration: "none" }}>{p.authorName}</a>
+              <div key={p.id} className="post">
+                {/* Cabecera del post: autor con inicial, meta en mono y estado */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className="post-av">{initials(p.authorName)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <a href={`/u/${p.authorHandle}`} style={{ color: "var(--text)", textDecoration: "none", fontWeight: 600, fontSize: 13.5 }}>{p.authorName}</a>
+                    {p.authorHandle && <div className="meta" style={{ marginTop: 3, fontSize: 10, letterSpacing: ".04em", textTransform: "uppercase" }}>@{p.authorHandle}</div>}
                   </div>
-                  <button className="ghost" style={{ marginTop: 0 }} onClick={() => like(p.id)}>👍 {p.likeCount}</button>
+                  {p.pinned && <span className="pill">Fijado</span>}
+                  {p.category && <span className="pill brand">{p.category}</span>}
+                </div>
+
+                {p.title && <div style={{ fontWeight: 600, fontSize: 15.5, lineHeight: 1.35, marginTop: 12 }}>{p.title}</div>}
+                {p.body && <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--body)", marginTop: 7, overflowWrap: "anywhere" }}>{p.body}</div>}
+
+                {/* Fila de acciones separada por una línea, como en el diseño */}
+                <div className="post-actions">
+                  <button className="pact on" onClick={() => like(p.id)}>
+                    ▲ <span style={{ fontFamily: "var(--font-mono)" }}>{p.likeCount}</span>
+                  </button>
+                  {isMember && (
+                    <button className="pact" onClick={() => toggleComments(p.id)}>
+                      ▭ <span style={{ fontFamily: "var(--font-mono)" }}>{(comments[p.id] || []).length || ""}</span>
+                    </button>
+                  )}
                 </div>
                 {isManager && (
                   <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
@@ -380,7 +483,6 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
                     <button className="ghost" style={{ marginTop: 0, fontSize: 12, padding: "3px 8px", color: "#ffb4c4" }} onClick={() => delPost(p.id)}>🗑</button>
                   </div>
                 )}
-                {isMember && <button className="ghost" style={{ marginTop: 8, fontSize: 12, padding: "4px 10px" }} onClick={() => toggleComments(p.id)}>💬 Comentarios</button>}
                 {openPost === p.id && (
                   <div style={{ marginTop: 8, paddingLeft: 12 }}>
                     {(comments[p.id] || []).map((cm) => <div key={cm.id} style={{ fontSize: 13, padding: "3px 0" }}><b>{cm.authorName}:</b> {cm.body}</div>)}
@@ -681,6 +783,49 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Barra inferior (solo móvil): las 10 pestañas no caben en 412 px, así
+          que bajan las 5 principales y el resto vive en "Más". */}
+      <nav className="bottomnav">
+        <button className={tab === "community" ? "active" : ""} onClick={() => goTab("community")}>
+          <span className="bn-i">▣</span><span className="bn-t">FEED</span>
+        </button>
+        <button className={tab === "classroom" ? "active" : ""} onClick={() => goTab("classroom")}>
+          <span className="bn-i">▤</span><span className="bn-t">CURSOS</span>
+        </button>
+        <button className={tab === "leaderboard" ? "active" : ""} onClick={() => goTab("leaderboard")}>
+          <span className="bn-i">▲</span><span className="bn-t">RANKING</span>
+        </button>
+        <button className={tab === "chat" ? "active" : ""} onClick={() => goTab(isMember ? "chat" : "about")}>
+          <span className="bn-i">▭</span><span className="bn-t">{isMember ? "CHAT" : "INFO"}</span>
+        </button>
+        <button className={moreTabs.includes(tab) ? "active" : ""} onClick={() => setShowMore(true)}>
+          <span className="bn-i">●</span><span className="bn-t">MÁS</span>
+        </button>
+      </nav>
+
+      {showMore && (
+        <div className="sheet-overlay" onClick={() => setShowMore(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="label" style={{ marginBottom: 12 }}>Más secciones</div>
+            {([
+              ["calendar", "🗓", "Calendario"],
+              ["members", "👥", "Miembros"],
+              ["about", "ℹ️", "Acerca de"],
+              ...(c.affiliateEnabled || isManager ? [["affiliates", "💰", "Afiliados"]] : []),
+              ...(isManager ? [["income", "📊", "Ingresos"]] : []),
+              ...(isManager ? [["review", "🧾", `Comprobantes${pending.length ? ` (${pending.length})` : ""}`]] : []),
+              ...(isOwner ? [["settings", "⚙️", "Ajustes"]] : []),
+            ] as [Tab, string, string][]).map(([id, icon, label]) => (
+              <button key={id} className="sheet-item" onClick={() => { goTab(id); setShowMore(false); }}>
+                <span>{icon}</span><span style={{ flex: 1, textAlign: "left" }}>{label}</span>
+                {tab === id && <span className="meta" style={{ color: "var(--accent3)" }}>ACTUAL</span>}
+              </button>
+            ))}
+            <button className="ghost" style={{ width: "100%" }} onClick={() => setShowMore(false)}>Cerrar</button>
+          </div>
         </div>
       )}
     </div>

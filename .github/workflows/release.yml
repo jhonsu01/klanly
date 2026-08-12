@@ -1,12 +1,19 @@
 name: Release
 
-# Se dispara al empujar un tag vX.Y.Z (o manualmente).
-# Compila el .msi (Windows) y el .apk (Android), publica una Release
-# con ambos binarios y BORRA las releases anteriores (solo se mantiene la ultima).
+# DESACTIVADO EL DISPARO AUTOMATICO (2026-07-25).
+# Se superaron los limites de minutos de GitHub Actions, asi que este workflow
+# YA NO se ejecuta al empujar un tag vX.Y.Z: solo corre si se lanza a mano
+# desde la pestana Actions ("Run workflow").
+#
+# Compilacion habitual = LOCAL:
+#   .\scripts\build-apk.ps1 -Publish     (APK Android; ver scripts/build-local.md)
+#   .\scripts\build-msi.ps1 -Publish     (MSI escritorio)
+#
+# Para reactivar el disparo automatico, descomenta el bloque "push:".
 on:
-  push:
-    tags:
-      - 'v*'
+  # push:
+  #   tags:
+  #     - 'v*'
   workflow_dispatch:
     inputs:
       version:
