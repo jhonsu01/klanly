@@ -5,9 +5,12 @@ name: Release
 # YA NO se ejecuta al empujar un tag vX.Y.Z: solo corre si se lanza a mano
 # desde la pestana Actions ("Run workflow").
 #
-# Compilacion habitual = LOCAL:
-#   .\scripts\build-apk.ps1 -Publish     (APK Android; ver scripts/build-local.md)
-#   .\scripts\build-msi.ps1 -Publish     (MSI escritorio)
+# Compilacion habitual = LOCAL. Ver scripts/build-local.md:
+#   .\scripts\build-apk.ps1 -Publish      (APK Android)
+#   cd apps\admin-windows; npx tauri build (MSI escritorio)
+#
+# Recuerda: la web se despliega en Vercel con cada push, y tanto el APK como el
+# MSI cargan la web en vivo. Los cambios de diseno/API NO necesitan recompilar.
 #
 # Para reactivar el disparo automatico, descomenta el bloque "push:".
 on:

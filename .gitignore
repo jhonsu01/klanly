@@ -32,3 +32,7 @@ Thumbs.db
 # NO ignorar el wrapper de Gradle (necesario para el CI)
 !gradle-wrapper.jar
 !apps/android/gradle/wrapper/gradle-wrapper.jar
+
+# Compilacion local (Gradle)
+apps/android/local.properties
+dist/

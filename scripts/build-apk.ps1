@@ -73,9 +73,16 @@ Push-Location $android
 try {
   $gradlew = Join-Path $android 'gradlew.bat'
   if (-not (Test-Path $gradlew)) { throw "Falta gradlew.bat en apps/android" }
+  # Gradle escribe avisos y progreso en stderr. Con ErrorActionPreference='Stop'
+  # PowerShell los convierte en NativeCommandError y aborta aunque la
+  # compilacion vaya bien, asi que lo bajamos para esta llamada.
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   # --no-daemon evita dejar procesos de Gradle colgados entre compilaciones
   & $gradlew $task --no-daemon
-  if ($LASTEXITCODE -ne 0) { throw "Gradle fallo con codigo $LASTEXITCODE" }
+  $code = $LASTEXITCODE
+  $ErrorActionPreference = $prev
+  if ($code -ne 0) { throw "Gradle fallo con codigo $code" }
 } finally {
   Pop-Location
 }
