@@ -97,18 +97,56 @@ gh release upload v0.7.0 (Get-ChildItem apps\admin-windows\src-tauri\target\rele
 
 **`java.io.IOException: Unable to establish loopback connection`**
 
-Gradle bifurca un proceso demonio y algo lo esta matando. Causas habituales:
+Diagnostico real de esta maquina (2026-08-12). El error del cliente es solo el
+sintoma; la causa esta en el log del demonio
+(`~/.gradle/daemon/8.9/daemon-*.out.log`):
 
-- Antivirus o firewall bloqueando el proceso hijo de Java -> anade una
-  exclusion para la carpeta `~/.gradle` y para `java.exe` del JDK.
-- Ejecutarlo dentro de un entorno que limpia procesos hijos (por ejemplo un
-  agente automatizado). **Ejecutalo desde tu propia terminal de PowerShell.**
-- Demonios zombis de una ejecucion anterior:
+```
+[ERROR] [org.gradle.internal.remote.internal.inet.TcpIncomingConnector]
+        Could not accept remote connection.
+Caused by: java.net.SocketException: Invalid argument: connect
+```
 
-  ```powershell
-  Get-Process java -ErrorAction SilentlyContinue | Stop-Process -Force
-  Remove-Item "$env:USERPROFILE\.gradle\daemon" -Recurse -Force
-  ```
+El demonio arranca, reserva su puerto en `127.0.0.1` y muere a los ~240 ms
+porque el `accept()` falla con *Invalid argument*. Es un problema del **stack de
+red de Windows**, no de Gradle ni del proyecto: hay filtros Winsock/NDIS de
+VirtualBox y adaptadores virtuales de Hyper-V enlazados a todas las interfaces
+(se ven enumerados en ese mismo log).
+
+Ya se descarto (todo probado, todo falla igual):
+
+- `--no-daemon` -> en JDK 21 Gradle **siempre** bifurca un demonio de un solo
+  uso, porque necesita los `--add-opens`. No se puede evitar.
+- Comentar `org.gradle.jvmargs` en `gradle.properties`.
+- `-Djava.net.preferIPv4Stack=true`.
+- Lanzarlo desacoplado con `Start-Process` (no era el shell padre matandolo).
+- `GRADLE_USER_HOME` nuevo y borrar `~/.gradle/daemon` (registro corrupto).
+- Un test de loopback en Java puro **si funciona** (bind + connect a 127.0.0.1),
+  asi que el loopback en general esta bien: lo que rompe es el `accept()` del
+  demonio bajo esos filtros de red.
+
+### Que probar, por orden de probabilidad
+
+1. **Reiniciar Winsock** (el remedio estandar para *Invalid argument* por LSPs).
+   PowerShell **como administrador** y despues **reiniciar el equipo**:
+
+   ```powershell
+   netsh winsock reset
+   netsh int ip reset
+   ```
+
+2. **Compilar desde Android Studio** (Build > Build APK). Usa su propio JDK
+   embebido y su gestion del demonio; suele pasar por alto el problema.
+
+3. **Desactivar temporalmente los adaptadores virtuales** que meten filtros
+   (VirtualBox Host-Only, Hyper-V Virtual Switch) desde
+   *Conexiones de red*, compilar, y volver a activarlos.
+
+4. **Excluir de antivirus/firewall** la carpeta `%USERPROFILE%\.gradle` y el
+   `java.exe` del JDK.
+
+5. Si nada funciona: lanzar el workflow **una sola vez** a mano desde
+   *Actions -> Release -> Run workflow* (consume minutos, pero es un unico uso).
 
 **`SDK location not found`** — falta `ANDROID_HOME`. El script escribe
 `apps/android/local.properties` automaticamente cuando la variable existe.
