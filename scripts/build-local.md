@@ -52,7 +52,49 @@ escritorio carga `https://klanly.vercel.app/admin`. Es decir:
    [Environment]::SetEnvironmentVariable('ANDROID_HOME', "$env:LOCALAPPDATA\Android\Sdk", 'User')
    ```
 
-### Compilar
+### Compilar (via recomendada en esta maquina: SIN Gradle)
+
+En este equipo `gradlew` **nunca** arranca (ver *Problemas conocidos*), asi que
+el camino que funciona es saltarse Gradle:
+
+```powershell
+.\scripts\build-apk-nogradle.ps1
+.\scripts\build-apk-nogradle.ps1 -Version 0.7.1 -Publish
+```
+
+Invoca directamente la cadena del SDK que Gradle usaria por debajo:
+
+| Paso | Herramienta | Que hace |
+|---|---|---|
+| 1 | `aapt2 compile` | recursos a formato binario |
+| 2 | `aapt2 link` | APK base con manifest + `resources.arsc` |
+| 3 | `kotlinc` | `MainActivity.kt` a `.class` |
+| 4 | `d8` | `.class` + `kotlin-stdlib` a `classes.dex` |
+| 5 | `jar uf` | mete el dex en el APK |
+| 6 | `zipalign` | alinea a 4 bytes |
+| 7 | `apksigner` | firma v2+v3 con la clave de depuracion |
+
+Funciona porque la app es **deliberadamente minima**: un unico archivo Kotlin y
+**cero dependencias externas** (ni AndroidX). Resultado real: APK de 0,7 MB
+firmado y verificado.
+
+> **Si algun dia se anaden dependencias** (AndroidX, Compose, cualquier
+> libreria), este atajo deja de servir: habria que resolver las dependencias a
+> mano. En ese caso, arreglar Gradle o compilar desde Android Studio.
+
+**Detalles que hubo que resolver** (ya estan en el script, aqui por referencia):
+
+- El manifest **no lleva `package`** porque AGP lo inyecta desde `namespace`.
+  aapt2 a pelo lo exige, asi que el script trabaja sobre una copia del manifest
+  con el atributo anadido (el original no se toca).
+- `kotlinc.bat` y `d8.bat` fallan por el espacio de la ruta del usuario. Se
+  invocan las clases main (`K2JVMCompiler`, `com.android.tools.r8.D8`) con
+  `java -cp`, y d8 corre desde el directorio de clases con rutas relativas.
+- `kotlin-stdlib.jar` debe entrar **en el dex**, no solo en el classpath.
+- Los `Info: ... malformed kotlin.Metadata` de d8 son inocuos (metadata de
+  Kotlin 2.x frente al parser de d8).
+
+### Compilar con Gradle (si algun dia funciona)
 
 ```powershell
 .\scripts\build-apk.ps1
