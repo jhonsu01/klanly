@@ -789,19 +789,19 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       {/* Barra inferior (solo móvil): las 10 pestañas no caben en 412 px, así
           que bajan las 5 principales y el resto vive en "Más". */}
       <nav className="bottomnav">
-        <button className={tab === "community" ? "active" : ""} onClick={() => goTab("community")}>
+        <button className={`bn${tab === "community" ? " active" : ""}`} onClick={() => goTab("community")}>
           <span className="bn-i">▣</span><span className="bn-t">FEED</span>
         </button>
-        <button className={tab === "classroom" ? "active" : ""} onClick={() => goTab("classroom")}>
+        <button className={`bn${tab === "classroom" ? " active" : ""}`} onClick={() => goTab("classroom")}>
           <span className="bn-i">▤</span><span className="bn-t">CURSOS</span>
         </button>
-        <button className={tab === "leaderboard" ? "active" : ""} onClick={() => goTab("leaderboard")}>
+        <button className={`bn${tab === "leaderboard" ? " active" : ""}`} onClick={() => goTab("leaderboard")}>
           <span className="bn-i">▲</span><span className="bn-t">RANKING</span>
         </button>
-        <button className={tab === "chat" ? "active" : ""} onClick={() => goTab(isMember ? "chat" : "about")}>
+        <button className={`bn${tab === "chat" ? " active" : ""}`} onClick={() => goTab(isMember ? "chat" : "about")}>
           <span className="bn-i">▭</span><span className="bn-t">{isMember ? "CHAT" : "INFO"}</span>
         </button>
-        <button className={moreTabs.includes(tab) ? "active" : ""} onClick={() => setShowMore(true)}>
+        <button className={`bn${moreTabs.includes(tab) ? " active" : ""}`} onClick={() => setShowMore(true)}>
           <span className="bn-i">●</span><span className="bn-t">MÁS</span>
         </button>
       </nav>

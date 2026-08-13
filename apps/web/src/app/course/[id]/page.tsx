@@ -43,8 +43,8 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const [formRes, setFormRes] = useState<Resource[]>(noRes);
   const [editRes, setEditRes] = useState<Resource[]>(noRes);
   const [confirm, setConfirm] = useState<null | { kind: "course" } | { kind: "lesson"; id: string; title: string }>(null);
-  // Modulo expandido en el acordeon (null = todos recogidos)
-  const [openModule, setOpenModule] = useState<string | null>(null);
+  // Indice completo de modulos (se abre a peticion, no ocupa la pantalla)
+  const [showAll, setShowAll] = useState(false);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -58,13 +58,6 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   }, [id]);
   useEffect(() => { load(); }, [load]);
 
-  // Mantener abierto el modulo al que pertenece la leccion actual, tambien
-  // cuando se navega con Anterior/Siguiente entre modulos distintos.
-  useEffect(() => {
-    if (!d || !sel) return;
-    const l = d.lessons.find((x) => x.id === sel);
-    if (l) setOpenModule(l.moduleName?.trim() || "General");
-  }, [d, sel]);
 
   const modules = useMemo(() => {
     if (!d) return [] as { name: string; items: Lesson[] }[];
@@ -86,6 +79,12 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const prevLesson = idx > 0 ? d.lessons[idx - 1] : null;
   const nextLesson = idx >= 0 && idx < d.lessons.length - 1 ? d.lessons[idx + 1] : null;
   const goto = (id?: string) => { if (id) { setSel(id); setEditing(null); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); } };
+
+  // El modulo visible NO es estado: se deriva de la leccion seleccionada, asi
+  // siempre coincide con lo que se esta leyendo (tambien al usar los botones
+  // de anterior/siguiente que cruzan de modulo).
+  const curModIdx = Math.max(0, modules.findIndex((m) => m.items.some((l) => l.id === sel)));
+  const curMod = modules[curModIdx] ?? null;
 
   const onPickImage = async (file: File | undefined, apply: (url: string) => void) => {
     if (!file) return;
@@ -236,46 +235,57 @@ export default function CoursePage({ params }: { params: { id: string } }) {
       <div className="course-grid" style={{ marginTop: 16 }}>
         <div className="card" style={{ alignSelf: "start" }}>
           {d.lessons.length === 0 && <div className="muted">Este curso aún no tiene lecciones.</div>}
-          {/* Acordeon: solo se expande el modulo de la leccion actual. Con
-              muchos modulos, tenerlos todos abiertos obligaba a un scroll
-              enorme para llegar al contenido. */}
-          {modules.map((mod) => {
-            const open = openModule === mod.name;
-            const done = mod.items.filter((l) => l.completed).length;
-            const hasCurrent = mod.items.some((l) => l.id === sel);
-            return (
-              <div key={mod.name} className={`mod${open ? " open" : ""}`}>
-                <button className="mod-head" onClick={() => setOpenModule(open ? null : mod.name)}>
-                  <span className="mod-chev" aria-hidden>{open ? "–" : "+"}</span>
-                  <span className="mod-name">{mod.name}</span>
-                  {hasCurrent && !open && <span className="pill brand">Aquí</span>}
-                  <span className="mod-count">{done}/{mod.items.length}</span>
+
+          {/* Se muestra SOLO el modulo actual. Con 7 modulos, listarlos todos
+              (aunque estuvieran recogidos) seguia ocupando la pantalla entera
+              y obligaba a bajar mucho para llegar al contenido. */}
+          {curMod && (
+            <>
+              <div className="modnav">
+                <button
+                  className="icon-btn" title="Lección anterior" aria-label="Lección anterior"
+                  onClick={() => goto(prevLesson?.id)} disabled={!prevLesson}
+                >‹</button>
+
+                <button className="modnav-mid" onClick={() => setShowAll(true)} title="Ver todos los módulos">
+                  <span className="modnav-name">{curMod.name}</span>
+                  <span className="modnav-sub">
+                    MÓDULO {curModIdx + 1} DE {modules.length} · LECCIÓN {idx + 1} DE {d.lessons.length}
+                  </span>
                 </button>
 
-                {open && (
-                  <div className="mod-body">
-                    {mod.items.map((l) => (
-                      <div
-                        key={l.id}
-                        className={`les${sel === l.id ? " active" : ""}${l.locked ? " locked" : ""}`}
-                        onClick={() => !l.locked && setSel(l.id)}
-                      >
-                        <span className="les-ico" aria-hidden>{l.completed ? "✅" : l.locked ? "🔒" : "▶️"}</span>
-                        <span className="les-title">{l.title}</span>
-                        {d.isManager && (
-                          <span className="les-actions" onClick={(e) => e.stopPropagation()}>
-                            <button className="icon-btn" onClick={() => move(l.id, "up")} title="Subir">↑</button>
-                            <button className="icon-btn" onClick={() => move(l.id, "down")} title="Bajar">↓</button>
-                            <button className="icon-btn" onClick={() => setConfirm({ kind: "lesson", id: l.id, title: l.title })} title="Borrar">🗑</button>
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <button
+                  className="icon-btn" title="Lección siguiente" aria-label="Lección siguiente"
+                  onClick={() => goto(nextLesson?.id)} disabled={!nextLesson}
+                >›</button>
               </div>
-            );
-          })}
+
+              <div className="mod-body">
+                {curMod.items.map((l) => (
+                  <div
+                    key={l.id}
+                    className={`les${sel === l.id ? " active" : ""}${l.locked ? " locked" : ""}`}
+                    onClick={() => !l.locked && setSel(l.id)}
+                  >
+                    <span className="les-ico" aria-hidden>{l.completed ? "✅" : l.locked ? "🔒" : "▶️"}</span>
+                    <span className="les-title">{l.title}</span>
+                    {d.isManager && (
+                      <span className="les-actions" onClick={(e) => e.stopPropagation()}>
+                        <button className="icon-btn" onClick={() => move(l.id, "up")} title="Subir">↑</button>
+                        <button className="icon-btn" onClick={() => move(l.id, "down")} title="Bajar">↓</button>
+                        <button className="icon-btn" onClick={() => setConfirm({ kind: "lesson", id: l.id, title: l.title })} title="Borrar">🗑</button>
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Acceso discreto al indice completo */}
+              <button className="modnav-all" onClick={() => setShowAll(true)}>
+                ☰ Ver los {modules.length} módulos
+              </button>
+            </>
+          )}
         </div>
 
         <div className="card">
@@ -330,6 +340,35 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           )}
         </div>
       </div>
+      )}
+
+      {/* Indice completo: solo cuando se pide */}
+      {showAll && (
+        <div className="sheet-overlay" onClick={() => setShowAll(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="label" style={{ marginBottom: 12 }}>Índice del curso · {modules.length} módulos</div>
+            {modules.map((mod, i) => {
+              const done = mod.items.filter((l) => l.completed).length;
+              const here = i === curModIdx;
+              const first = mod.items.find((l) => !l.locked) ?? mod.items[0];
+              return (
+                <button
+                  key={mod.name}
+                  className={`sheet-item${here ? " here" : ""}`}
+                  onClick={() => { if (first && !first.locked) goto(first.id); setShowAll(false); }}
+                >
+                  <span className="modnav-num">{i + 1}</span>
+                  <span style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+                    <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mod.name}</span>
+                    <span className="meta">{mod.items.length} lección(es) · {done} completada(s)</span>
+                  </span>
+                  {here && <span className="pill brand">Aquí</span>}
+                </button>
+              );
+            })}
+            <button className="ghost" style={{ width: "100%" }} onClick={() => setShowAll(false)}>Cerrar</button>
+          </div>
+        </div>
       )}
     </div>
   );

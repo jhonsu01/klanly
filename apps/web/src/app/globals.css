@@ -590,42 +590,15 @@ button.danger:hover:not(:disabled) { filter: brightness(1.08); background: var(-
    de "texto atenuado". Si una clase de mensaje (.out/.muted/.meta/.label)
    acaba en un boton por error, el color del boton manda. */
 button, button * { color: inherit; }
-button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-item) { color: #fff; }
+/* Los botones "de chrome" definen su propio color (texto normal o atenuado);
+   el resto son de accion con fondo de marca y llevan texto blanco.
+   Al crear una clase de boton nueva con color propio, anadirla aqui. */
+button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-item):not(.modnav-mid):not(.modnav-all):not(.bn) { color: #fff; }
 
-/* ── Acordeon de modulos del Classroom ──────────────────────────────────────
-   Con muchos modulos, tenerlos todos abiertos obligaba a un scroll enorme
-   para llegar al contenido: solo se expande el modulo de la leccion actual. */
-.mod {
-  border: 1px solid var(--border); border-radius: 12px;
-  margin-bottom: 8px; overflow: hidden; background: var(--panel);
-}
-.mod.open { border-color: var(--border2); }
-.mod-head {
-  width: 100%; margin-top: 0; padding: 13px 14px; border-radius: 0;
-  display: flex; align-items: center; gap: 10px; text-align: left;
-  background: transparent; border: none; box-shadow: none;
-  color: var(--text); cursor: pointer;
-}
-.mod-head:hover:not(:disabled) { background: var(--surface2); }
-.mod.open .mod-head { background: var(--surface2); border-bottom: 1px solid var(--border); }
-.mod-chev {
-  width: 22px; height: 22px; flex: none; border-radius: 6px;
-  display: grid; place-items: center;
-  background: var(--chip); border: 1px solid var(--border);
-  font-family: var(--font-mono); font-size: 13px; font-weight: 600; line-height: 1;
-  color: var(--muted);
-}
-.mod.open .mod-chev { background: var(--accent); border-color: var(--accent); color: #fff; }
-.mod-name {
-  flex: 1; min-width: 0;
-  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
-  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.mod.open .mod-name { color: var(--text); }
-.mod-count {
-  flex: none; font-family: var(--font-mono); font-size: 11px; color: var(--dim);
-}
+/* ── Navegador de modulos del Classroom ─────────────────────────────────────
+   Se muestra UN solo modulo (el de la leccion actual) con anterior/siguiente
+   arriba y un acceso discreto al indice completo. Antes se listaban los 7
+   modulos recogidos y aun asi ocupaban la pantalla entera. */
 .mod-body { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
 
 /* Fila de leccion */
@@ -645,3 +618,46 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
 .les.active .les-title { font-weight: 600; }
 .les-actions { display: flex; gap: 4px; flex: none; }
 .les-actions .icon-btn { width: 34px; height: 34px; font-size: 13px; }
+
+/* Barra de navegación del módulo actual */
+.modnav {
+  display: flex; align-items: stretch; gap: 8px; margin-bottom: 10px;
+}
+.modnav .icon-btn { flex: none; width: 44px; height: auto; min-height: 48px; font-size: 20px; }
+.modnav .icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+.modnav-mid {
+  flex: 1; min-width: 0; margin-top: 0; padding: 9px 12px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 11px;
+  box-shadow: none; color: var(--text); cursor: pointer; text-align: left;
+}
+.modnav-mid:hover:not(:disabled) { background: var(--chip); border-color: var(--accent2); }
+.modnav-name {
+  width: 100%; font-size: 14px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.modnav-sub {
+  font-family: var(--font-mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: .1em; color: var(--dim); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+/* Acceso discreto al índice: enlace, no botón protagonista */
+.modnav-all {
+  width: 100%; margin-top: 10px; padding: 9px; border-radius: 10px;
+  background: transparent; border: 1px dashed var(--border); box-shadow: none;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--dim);
+}
+.modnav-all:hover:not(:disabled) {
+  background: var(--surface2); border-color: var(--accent2); color: var(--text);
+}
+/* Número de módulo en el índice */
+.modnav-num {
+  flex: none; width: 26px; height: 26px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: var(--chip); border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--muted);
+}
+.sheet-item.here { border-color: var(--accent2); }
+.sheet-item.here .modnav-num { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sheet-item { align-items: center; padding: 10px 12px; }
