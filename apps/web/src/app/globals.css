@@ -141,8 +141,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
 
 /* Classroom: lista de lecciones + reproductor (apila en móvil) */
-.course-grid { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
-@media (max-width: 760px) { .course-grid { grid-template-columns: 1fr; } }
+/* Classroom en UNA columna a cualquier ancho: el navegador de modulo arriba y
+   el contenido debajo a todo el ancho. La rejilla de 320px + contenido dejaba
+   el texto en una franja estrecha en escritorio. */
+.course-grid { display: flex; flex-direction: column; gap: 16px; }
+/* Contenedor mas ancho solo en el Classroom, donde el contenido manda */
+.container.wide { max-width: 1080px; }
 @media (max-width: 760px) {
   .admin-shell { flex-direction: column; }
   .admin-side { width: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -661,3 +665,26 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
 .sheet-item.here { border-color: var(--accent2); }
 .sheet-item.here .modnav-num { background: var(--accent); border-color: var(--accent); color: #fff; }
 .sheet-item { align-items: center; padding: 10px 12px; }
+
+/* ── Medida de lectura del contenido de una leccion ─────────────────────────
+   La tarjeta ocupa todo el ancho (bien para video, imagenes y codigo), pero
+   los parrafos se limitan: a 1080px una linea de texto tendria ~130 caracteres
+   y se pierde el renglon al volver. Los medios NO se limitan. */
+.md-body > p,
+.md-body > ul,
+.md-body > ol,
+.md-body > blockquote { max-width: 74ch; }
+.md-body > h2,
+.md-body > h3,
+.md-body > h4 { max-width: 60ch; }
+
+/* En escritorio el navegador de modulo es una barra ancha: el nombre y el
+   listado de lecciones caben en linea sin desperdiciar alto. */
+@media (min-width: 761px) {
+  .modnav .icon-btn { width: 48px; }
+  .modnav-mid { flex-direction: row; align-items: center; gap: 12px; padding: 11px 16px; }
+  .modnav-name { width: auto; flex: none; font-size: 15px; }
+  .modnav-sub { margin-left: auto; }
+  .mod-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .modnav-all { width: auto; padding: 9px 18px; }
+}

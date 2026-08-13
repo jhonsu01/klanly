@@ -71,7 +71,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
     return out;
   }, [d]);
 
-  if (!d) return <div className="container"><TopBar backHref="/" /><p className="muted">Cargando…</p></div>;
+  if (!d) return <div className="container wide"><TopBar backHref="/" /><p className="muted">Cargando…</p></div>;
 
   const current = d.lessons.find((l) => l.id === sel) || null;
   const video = parseVideo(current?.videoUrl);
@@ -137,7 +137,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   };
 
   return (
-    <div className="container">
+    <div className="container wide">
       <TopBar
         backHref={d.community ? `/c/${d.community.slug}` : "/"}
         backLabel={d.community ? d.community.name : "Volver"}
