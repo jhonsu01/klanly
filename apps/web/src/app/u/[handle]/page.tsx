@@ -165,7 +165,7 @@ export default function ProfilePage({ params }: { params: { handle: string } }) 
             </div>
           )}
           <button
-            className="cd-danger"
+            className="danger"
             style={{ marginTop: 12 }}
             onClick={askDelete}
             disabled={busy}

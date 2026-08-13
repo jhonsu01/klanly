@@ -43,6 +43,8 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const [formRes, setFormRes] = useState<Resource[]>(noRes);
   const [editRes, setEditRes] = useState<Resource[]>(noRes);
   const [confirm, setConfirm] = useState<null | { kind: "course" } | { kind: "lesson"; id: string; title: string }>(null);
+  // Modulo expandido en el acordeon (null = todos recogidos)
+  const [openModule, setOpenModule] = useState<string | null>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
 
@@ -55,6 +57,14 @@ export default function CoursePage({ params }: { params: { id: string } }) {
     } catch (e: any) { flash(e.message, false); }
   }, [id]);
   useEffect(() => { load(); }, [load]);
+
+  // Mantener abierto el modulo al que pertenece la leccion actual, tambien
+  // cuando se navega con Anterior/Siguiente entre modulos distintos.
+  useEffect(() => {
+    if (!d || !sel) return;
+    const l = d.lessons.find((x) => x.id === sel);
+    if (l) setOpenModule(l.moduleName?.trim() || "General");
+  }, [d, sel]);
 
   const modules = useMemo(() => {
     if (!d) return [] as { name: string; items: Lesson[] }[];
@@ -174,9 +184,9 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
       {d.isManager && (
         <div className="action-bar" style={{ marginTop: 14 }}>
-          <button className="out" onClick={() => setShowAdd((s) => !s)}>{showAdd ? "Cancelar" : "+ Agregar lección"}</button>
-          <button className="out" onClick={() => setEditCourse((s) => !s)}>✏️ Editar curso</button>
-          <button className="cd-danger" onClick={() => setConfirm({ kind: "course" })}>🗑 Borrar curso</button>
+          <button className="ghost" onClick={() => setShowAdd((s) => !s)}>{showAdd ? "Cancelar" : "+ Agregar lección"}</button>
+          <button className="ghost" onClick={() => setEditCourse((s) => !s)}>✏️ Editar curso</button>
+          <button className="danger" onClick={() => setConfirm({ kind: "course" })}>🗑 Borrar curso</button>
         </div>
       )}
 
@@ -226,25 +236,46 @@ export default function CoursePage({ params }: { params: { id: string } }) {
       <div className="course-grid" style={{ marginTop: 16 }}>
         <div className="card" style={{ alignSelf: "start" }}>
           {d.lessons.length === 0 && <div className="muted">Este curso aún no tiene lecciones.</div>}
-          {modules.map((mod) => (
-            <div key={mod.name} style={{ marginBottom: 12 }}>
-              <div className="label" style={{ margin: "6px 4px" }}>{mod.name}</div>
-              {mod.items.map((l) => (
-                <div key={l.id} className="comm-item" onClick={() => !l.locked && setSel(l.id)} style={{ cursor: l.locked ? "not-allowed" : "pointer", background: sel === l.id ? "var(--surface2)" : "transparent", opacity: l.locked ? 0.5 : 1 }}>
-                  <div className="comm-main" style={{ flex: 1, fontWeight: sel === l.id ? 600 : 400 }}>
-                    {l.completed ? "✅ " : l.locked ? "🔒 " : "▶️ "}{l.title}
+          {/* Acordeon: solo se expande el modulo de la leccion actual. Con
+              muchos modulos, tenerlos todos abiertos obligaba a un scroll
+              enorme para llegar al contenido. */}
+          {modules.map((mod) => {
+            const open = openModule === mod.name;
+            const done = mod.items.filter((l) => l.completed).length;
+            const hasCurrent = mod.items.some((l) => l.id === sel);
+            return (
+              <div key={mod.name} className={`mod${open ? " open" : ""}`}>
+                <button className="mod-head" onClick={() => setOpenModule(open ? null : mod.name)}>
+                  <span className="mod-chev" aria-hidden>{open ? "–" : "+"}</span>
+                  <span className="mod-name">{mod.name}</span>
+                  {hasCurrent && !open && <span className="pill brand">Aquí</span>}
+                  <span className="mod-count">{done}/{mod.items.length}</span>
+                </button>
+
+                {open && (
+                  <div className="mod-body">
+                    {mod.items.map((l) => (
+                      <div
+                        key={l.id}
+                        className={`les${sel === l.id ? " active" : ""}${l.locked ? " locked" : ""}`}
+                        onClick={() => !l.locked && setSel(l.id)}
+                      >
+                        <span className="les-ico" aria-hidden>{l.completed ? "✅" : l.locked ? "🔒" : "▶️"}</span>
+                        <span className="les-title">{l.title}</span>
+                        {d.isManager && (
+                          <span className="les-actions" onClick={(e) => e.stopPropagation()}>
+                            <button className="icon-btn" onClick={() => move(l.id, "up")} title="Subir">↑</button>
+                            <button className="icon-btn" onClick={() => move(l.id, "down")} title="Bajar">↓</button>
+                            <button className="icon-btn" onClick={() => setConfirm({ kind: "lesson", id: l.id, title: l.title })} title="Borrar">🗑</button>
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {d.isManager && (
-                    <div style={{ display: "flex", gap: 4 }} onClick={(e) => e.stopPropagation()}>
-                      <button className="icon-btn" onClick={() => move(l.id, "up")} title="Subir">↑</button>
-                      <button className="icon-btn" onClick={() => move(l.id, "down")} title="Bajar">↓</button>
-                      <button className="icon-btn" onClick={() => setConfirm({ kind: "lesson", id: l.id, title: l.title })} title="Borrar">🗑</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="card">
@@ -253,7 +284,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             <>
               <div className="row">
                 <h2>{current.title}</h2>
-                {d.isManager && <button className="out" style={{ marginTop: 0 }} onClick={() => (editing === current.id ? setEditing(null) : startEdit(current))}>{editing === current.id ? "Cerrar" : "✏️ Editar"}</button>}
+                {d.isManager && <button className="ghost" style={{ marginTop: 0 }} onClick={() => (editing === current.id ? setEditing(null) : startEdit(current))}>{editing === current.id ? "Cerrar" : "✏️ Editar"}</button>}
               </div>
 
               {editing === current.id && d.isManager ? (
@@ -279,7 +310,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                   ) : video?.kind === "file" ? (
                     <video src={video.src} controls style={{ width: "100%", borderRadius: 10, background: "var(--surface2)" }} />
                   ) : video?.kind === "link" ? (
-                    <a href={video.href} target="_blank" rel="noreferrer"><button className="out">Abrir recurso ↗</button></a>
+                    <a href={video.href} target="_blank" rel="noreferrer"><button className="ghost">Abrir recurso ↗</button></a>
                   ) : <div className="muted">Esta lección no tiene video.</div>}
                   {current.content && (
                     <div className="md-body" style={{ marginTop: 14 }}
@@ -291,9 +322,9 @@ export default function CoursePage({ params }: { params: { id: string } }) {
               )}
 
               <div className="row" style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid var(--hairline)" }}>
-                <button className="out" style={{ visibility: prevLesson ? "visible" : "hidden" }} onClick={() => goto(prevLesson?.id)}>← Anterior</button>
+                <button className="ghost" style={{ visibility: prevLesson ? "visible" : "hidden" }} onClick={() => goto(prevLesson?.id)}>← Anterior</button>
                 <span className="meta" style={{ alignSelf: "center" }}>{idx + 1} / {d.lessons.length}</span>
-                <button className="out" style={{ visibility: nextLesson ? "visible" : "hidden" }} onClick={() => goto(nextLesson?.id)}>Siguiente →</button>
+                <button className="ghost" style={{ visibility: nextLesson ? "visible" : "hidden" }} onClick={() => goto(nextLesson?.id)}>Siguiente →</button>
               </div>
             </>
           )}
