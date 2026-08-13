@@ -135,6 +135,40 @@ gh release upload v0.7.0 (Get-ChildItem apps\admin-windows\src-tauri\target\rele
 
 ---
 
+## Convencion: UNA sola release
+
+El repo mantiene **una unica release** con los binarios vigentes (es lo que
+hacia el workflow con `gh release delete --cleanup-tag`). Como el CI esta
+desactivado, ahora se hace a mano.
+
+Al sacar una version nueva, los binarios que NO se recompilan hay que
+**arrastrarlos** a la release nueva antes de borrar la vieja. Ejemplo real de
+v0.6.0 -> v0.7.0 (el MSI no cambio, solo el APK):
+
+```powershell
+# 1) Rescatar del release viejo lo que sigue vigente
+gh release download v0.6.0 --pattern "*.msi" --dir dist
+
+# 2) Crear/actualizar la release nueva con TODOS los binarios
+gh release upload v0.7.0 dist\Klanly-0.7.0.apk --clobber
+gh release upload v0.7.0 dist\Klanly-Admin-v0.6.0.msi --clobber
+
+# 3) Verificar que el asset se descarga de verdad desde la release nueva
+#    (antes de borrar nada: el borrado es irreversible)
+gh release download v0.7.0 --pattern "*.msi" --dir $env:TEMP --clobber
+
+# 4) Recien entonces, borrar la release vieja y su tag
+gh release delete v0.6.0 --cleanup-tag --yes
+git tag -d v0.6.0
+```
+
+**Titulo de la release:** solo `Klanly vX.Y.Z`, sin sufijos ni nombres en clave.
+
+**El MSI puede quedarse en una version anterior a la del APK.** Es normal: el
+MSI solo se recompila si se toca `apps/admin-windows`, y como carga el panel web
+en vivo, casi nunca hace falta. Por eso el asset conserva su propio nombre
+(`Klanly-Admin-v0.6.0.msi`) dentro de una release v0.7.0.
+
 ## Problemas conocidos
 
 **`java.io.IOException: Unable to establish loopback connection`**
