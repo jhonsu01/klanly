@@ -678,13 +678,26 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
 .md-body > h3,
 .md-body > h4 { max-width: 60ch; }
 
-/* En escritorio el navegador de modulo es una barra ancha: el nombre y el
-   listado de lecciones caben en linea sin desperdiciar alto. */
+/* En escritorio TODO el panel del modulo cabe en una sola fila: navegacion,
+   lecciones e indice. Asi deja de robarle alto al contenido y no queda el
+   hueco a la derecha que dejaba la tarjeta encogida. */
 @media (min-width: 761px) {
-  .modnav .icon-btn { width: 48px; }
-  .modnav-mid { flex-direction: row; align-items: center; gap: 12px; padding: 11px 16px; }
-  .modnav-name { width: auto; flex: none; font-size: 15px; }
-  .modnav-sub { margin-left: auto; }
-  .mod-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-  .modnav-all { width: auto; padding: 9px 18px; }
+  .modpanel {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 12px; padding: 14px 16px;
+  }
+  .modpanel .modnav { flex: none; margin-bottom: 0; }
+  .modnav .icon-btn { width: 44px; min-height: 46px; }
+  .modnav-mid { flex-direction: row; align-items: center; gap: 12px; padding: 10px 15px; }
+  .modnav-name { width: auto; flex: none; font-size: 14.5px; }
+  .modnav-sub { flex: none; }
+
+  /* Las lecciones ocupan el espacio libre a la derecha de la navegacion */
+  .modpanel .mod-body {
+    flex: 1 1 300px; min-width: 0; padding: 0;
+    display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px;
+  }
+  .modpanel .mod-body .les { flex: 1 1 260px; }
+
+  .modpanel .modnav-all { flex: none; width: auto; margin-top: 0; padding: 10px 16px; }
 }

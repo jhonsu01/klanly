@@ -233,7 +233,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         </div>
       ) : (
       <div className="course-grid" style={{ marginTop: 16 }}>
-        <div className="card" style={{ alignSelf: "start" }}>
+        <div className="card modpanel">
           {d.lessons.length === 0 && <div className="muted">Este curso aún no tiene lecciones.</div>}
 
           {/* Se muestra SOLO el modulo actual. Con 7 modulos, listarlos todos
