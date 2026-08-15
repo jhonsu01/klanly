@@ -71,5 +71,9 @@ export async function currentUser() {
   const session = await getSession();
   if (!session) return null;
   const [u] = await db.select().from(users).where(eq(users.id, session.sub)).limit(1);
-  return u ?? null;
+  if (!u) return null;
+  // Una cuenta eliminada conserva su JWT hasta 7 dias: hay que rechazarla aqui,
+  // no solo en el login, o la sesion abierta sigue funcionando tras el borrado.
+  if (u.deletedAt) return null;
+  return u;
 }

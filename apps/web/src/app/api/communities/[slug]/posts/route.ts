@@ -4,7 +4,7 @@ import { posts, users } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { currentUser } from "@/lib/auth";
 import { ok, fail } from "@/lib/http";
-import { resolveCommunity, getMembership } from "@/lib/community";
+import { resolveCommunity, getMembership, canReadCommunity } from "@/lib/community";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +13,15 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: { slug: string } }) {
   const c = await resolveCommunity(params.slug);
   if (!c) return fail("Comunidad no encontrada", 404);
+
+  // El feed/los miembros/el ranking son contenido interno: publico solo si la
+  // comunidad es publica Y gratuita. Si cobra o es privada, hace falta ser
+  // miembro activo (o gestor / super admin).
+  const me = await currentUser();
+  if (!(await canReadCommunity(c, me))) {
+    return fail(me ? "Debes ser miembro activo de esta comunidad" : "No autenticado", me ? 403 : 401);
+  }
+
 
   const rows = await db
     .select({

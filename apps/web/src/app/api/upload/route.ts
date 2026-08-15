@@ -1,5 +1,6 @@
 import { put } from "@vercel/blob";
 import { currentUser } from "@/lib/auth";
+import { rateLimit } from "@/lib/ratelimit";
 import { ok, fail } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -19,6 +20,12 @@ const ALLOWED = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gi
 export async function POST(req: Request) {
   const me = await currentUser();
   if (!me) return fail("No autenticado", 401);
+  // Sin verificar el correo no se sube nada: si no, una cuenta desechable
+  // puede llenar el almacenamiento (o subir material ilicito) en segundos.
+  if (!me.emailVerified) return fail("Verifica tu correo para subir archivos.", 403, { needsVerify: true });
+  // Tope por usuario: 20 subidas por minuto es de sobra para el uso real.
+  const rl = rateLimit(`upload:${me.id}`, 20, 60_000);
+  if (!rl.ok) return fail("Demasiadas subidas seguidas. Espera un momento.", 429);
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");

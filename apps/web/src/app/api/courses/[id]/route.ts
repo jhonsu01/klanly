@@ -50,18 +50,30 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     isManager = canManage(me.platformRole, m?.role);
   }
 
-  const lessonsOut = rows.map((l) => ({
-    id: l.id,
-    moduleName: l.moduleName,
-    title: l.title,
-    videoUrl: l.videoUrl,
-    content: l.content,
-    resources: l.resources ?? [],
-    minLevel: l.minLevel,
-    position: l.position,
-    completed: completedIds.has(l.id),
-    locked: myLevel < Math.max(l.minLevel, course.minLevel),
-  }));
+  // El contenido de una leccion (video, texto y material) es EL PRODUCTO que se
+  // vende: solo viaja al cliente si quien pregunta es miembro activo o gestor.
+  // Antes se enviaba siempre y el muro de pago existia unicamente en la
+  // interfaz, asi que bastaba con pedir /api/courses/<id> para llevarselo todo.
+  // Se mantienen los titulos y la estructura: son el indice publico del curso.
+  const canSeeContent = isMember || isManager;
+
+  const lessonsOut = rows.map((l) => {
+    const levelLocked = myLevel < Math.max(l.minLevel, course.minLevel);
+    // Doble candado: por membresia (pago) y por nivel (gamificacion).
+    const hide = !canSeeContent || levelLocked;
+    return {
+      id: l.id,
+      moduleName: l.moduleName,
+      title: l.title,
+      videoUrl: hide ? null : l.videoUrl,
+      content: hide ? null : l.content,
+      resources: hide ? [] : (l.resources ?? []),
+      minLevel: l.minLevel,
+      position: l.position,
+      completed: completedIds.has(l.id),
+      locked: levelLocked,
+    };
+  });
 
   const done = lessonsOut.filter((l) => l.completed).length;
   const progressPct = lessonsOut.length ? Math.round((done / lessonsOut.length) * 100) : 0;

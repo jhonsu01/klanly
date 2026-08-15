@@ -31,3 +31,25 @@ export function isManagerRole(role?: string | null): boolean {
 export function canManage(platformRole: string, membershipRole?: string | null): boolean {
   return platformRole === "admin" || isManagerRole(membershipRole);
 }
+
+/**
+ * ¿Puede este usuario LEER el contenido interno de la comunidad
+ * (feed, miembros, ranking)?
+ *
+ * Una comunidad pública Y gratuita es una vitrina abierta. En cuanto cobra
+ * —o es privada— el contenido es para miembros activos, sus gestores y el
+ * super admin. Los datos publicos de la comunidad (nombre, precio, nº de
+ * miembros) siguen expuestos en GET /api/communities/[slug]: eso es el
+ * escaparate, no el contenido.
+ */
+export async function canReadCommunity(
+  c: { id: string; isPublic: boolean | null; priceCents: number; billingPeriod: string },
+  me: { id: string; platformRole: string } | null,
+): Promise<boolean> {
+  const isFree = c.priceCents === 0 || c.billingPeriod === "free";
+  if (c.isPublic && isFree) return true;
+  if (!me) return false;
+  if (me.platformRole === "admin") return true;
+  const m = await getMembership(c.id, me.id);
+  return !!m && (m.status === "active" || isManagerRole(m.role));
+}
