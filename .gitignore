@@ -39,3 +39,6 @@ dist/
 
 # Respaldos de la conversion automatica (zcode_convert.mjs)
 *.bak
+
+# Intermedios de la compilacion sin Gradle
+.tmp/
