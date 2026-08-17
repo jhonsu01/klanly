@@ -479,6 +479,12 @@ export const castDevices = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     pin: text("pin").notNull(),
+    /**
+     * Secreto que guarda la propia TV. Le permite recuperar SU identidad al
+     * recargarse (atrás en el mando, reinicio del televisor) en vez de pedir
+     * un PIN nuevo y romper el emparejamiento del celular.
+     */
+    deviceSecret: text("device_secret"),
     /** Usuario que emparejó la pantalla (null mientras espera). */
     userId: uuid("user_id").references(() => users.id),
     label: text("label"), // nombre que muestra la TV, p. ej. "Sala"

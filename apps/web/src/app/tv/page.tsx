@@ -16,60 +16,94 @@ type Orden = {
   sentBy: string;
 };
 
+type Estado = {
+  pin: string;
+  channel: string;
+  paired: boolean;
+};
+
+const LS_ID = "klanly_tv_device_id";
+const LS_SECRET = "klanly_tv_device_secret";
+
 /**
  * Pantalla para televisor.
  *
- * No tiene sesión ni navegación: pide un PIN, espera, y reproduce lo que el
- * celular le manda. Todo se dimensiona con vw para que se lea desde el sofá.
- * Sin interacción => no hace falta navegación con el mando.
+ * Guarda su identidad (deviceId + secreto) en el navegador. Al recargarse —el
+ * botón atrás del mando, un reinicio del televisor— RECUPERA el mismo canal en
+ * vez de pedir uno nuevo. Antes pedía dispositivo nuevo en cada carga: el PIN
+ * cambiaba, el celular seguía enviando al canal viejo y la pantalla se quedaba
+ * en blanco aunque el envío respondiera correctamente.
  */
 export default function TvPage() {
-  const [pin, setPin] = useState<string | null>(null);
+  const [est, setEst] = useState<Estado | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [orden, setOrden] = useState<Orden | null>(null);
-  const canal = useRef<string | null>(null);
+  const reintento = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Pedir PIN al servidor ─────────────────────────────────────────────────
-  const emparejar = useCallback(async () => {
+  // ── Registrarse o recuperar la identidad ──────────────────────────────────
+  const registrar = useCallback(async () => {
     setError(null);
     try {
+      const cuerpo: Record<string, string> = { label: "TV" };
+      const id = localStorage.getItem(LS_ID);
+      const secret = localStorage.getItem(LS_SECRET);
+      if (id && secret) { cuerpo.deviceId = id; cuerpo.deviceSecret = secret; }
+
       const r = await fetch("/api/cast/pair", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ label: "TV" }),
+        body: JSON.stringify(cuerpo),
       });
       const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "No se pudo obtener el PIN");
-      setPin(j.data.pin);
-      canal.current = j.data.channel;
-      // El PIN caduca: se pide otro solo, sin tocar el mando
-      setTimeout(() => { setPin(null); emparejar(); }, (j.data.expiresInSeconds - 5) * 1000);
+      if (!r.ok) throw new Error(j?.error || "No se pudo conectar");
+
+      localStorage.setItem(LS_ID, j.data.deviceId);
+      localStorage.setItem(LS_SECRET, j.data.deviceSecret);
+      setEst({ pin: j.data.pin, channel: j.data.channel, paired: !!j.data.paired });
+
+      // Mientras NO esté emparejada hay que refrescar el PIN al caducar. Si ya
+      // lo está, el PIN no se toca: el celular envía por el emparejamiento.
+      if (reintento.current) clearTimeout(reintento.current);
+      if (!j.data.paired) {
+        reintento.current = setTimeout(registrar, Math.max(30, j.data.expiresInSeconds - 5) * 1000);
+      }
     } catch (e: any) {
       setError(e.message);
-      setTimeout(emparejar, 5000); // la TV pudo arrancar antes que el WiFi
+      // La TV puede arrancar antes que el WiFi: se insiste sin tocar el mando
+      if (reintento.current) clearTimeout(reintento.current);
+      reintento.current = setTimeout(registrar, 5000);
     }
   }, []);
 
-  useEffect(() => { emparejar(); }, [emparejar]);
-
-  // ── Escuchar el canal de esta pantalla ────────────────────────────────────
   useEffect(() => {
-    if (!canal.current || !realtimeEnabled()) return;
+    registrar();
+    return () => { if (reintento.current) clearTimeout(reintento.current); };
+  }, [registrar]);
+
+  // ── Escuchar el canal (se resuscribe si cambia) ───────────────────────────
+  useEffect(() => {
+    const canal = est?.channel;
+    if (!canal || !realtimeEnabled()) return;
     const p = getPusherClient();
     if (!p) return;
-    const ch = p.subscribe(canal.current);
+    const ch = p.subscribe(canal);
     ch.bind("play", (data: Orden) => setOrden(data));
     ch.bind("stop", () => setOrden(null));
-    return () => { ch.unbind_all(); p.unsubscribe(canal.current!); };
-  }, [pin]);
+    return () => { ch.unbind_all(); p.unsubscribe(canal); };
+  }, [est?.channel]);
+
+  // Al recibir la primera orden, la pantalla ya está emparejada
+  useEffect(() => {
+    if (orden) setEst((e) => (e && !e.paired ? { ...e, paired: true } : e));
+  }, [orden]);
 
   // La pantalla no debe apagarse en medio de una serie
   useEffect(() => {
     let lock: any = null;
-    const pedir = async () => {
+    (async () => {
+      if (!orden) return;
       try { lock = await (navigator as any).wakeLock?.request("screen"); } catch {}
-    };
-    if (orden) pedir();
+    })();
     return () => { try { lock?.release(); } catch {} };
   }, [orden]);
 
@@ -114,7 +148,7 @@ export default function TvPage() {
     );
   }
 
-  // ── Esperando emparejamiento ──────────────────────────────────────────────
+  // ── Esperando ─────────────────────────────────────────────────────────────
   return (
     <div className="tv tv-espera">
       <div className="tv-marca">
@@ -130,18 +164,29 @@ export default function TvPage() {
           {error}
           <div className="tv-hint">Reintentando…</div>
         </div>
-      ) : pin ? (
+      ) : !est ? (
+        <div className="tv-msg">Conectando…</div>
+      ) : est.paired ? (
+        /* Ya emparejada: no se muestra el PIN, solo que está lista */
+        <>
+          <div className="tv-listo">✓ Pantalla lista</div>
+          <div className="tv-hint">
+            Elige un entrenamiento en el celular y pulsa <b>Ver en la TV</b>
+          </div>
+          <div className="tv-pin-chico">
+            Si necesitas volver a emparejar, el código es <b>{est.pin}</b>
+          </div>
+        </>
+      ) : (
         <>
           <div className="tv-hint">Escribe este código en tu celular</div>
-          <div className="tv-pin">{pin.slice(0, 3)}<span>·</span>{pin.slice(3)}</div>
+          <div className="tv-pin">{est.pin.slice(0, 3)}<span>·</span>{est.pin.slice(3)}</div>
           <div className="tv-pasos">
             <span><b>1</b> Abre Klanly en el celular</span>
             <span><b>2</b> Entra a una lección de entrenamiento</span>
             <span><b>3</b> Pulsa <b>Ver en la TV</b> y escribe el código</span>
           </div>
         </>
-      ) : (
-        <div className="tv-msg">Conectando…</div>
       )}
 
       {!realtimeEnabled() && (

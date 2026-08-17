@@ -856,3 +856,13 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
 /* El reproductor de entrenamiento ocupa el alto restante */
 .tv .wk { flex: 1; min-height: 0; }
 .tv .wk-video { flex: 1; min-height: 0; aspect-ratio: auto; }
+
+/* Estado "pantalla lista" (ya emparejada, sin mostrar el PIN a lo grande) */
+.tv-listo {
+  font-size: clamp(28px, 4vw, 56px); font-weight: 700; letter-spacing: -.02em;
+  color: var(--green);
+}
+.tv-pin-chico {
+  font-family: var(--font-mono); font-size: 1vw; color: var(--dim); margin-top: 1.5vh;
+}
+.tv-pin-chico b { color: var(--muted); letter-spacing: .12em; }

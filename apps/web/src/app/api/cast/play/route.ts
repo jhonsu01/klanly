@@ -14,9 +14,17 @@ export const dynamic = "force-dynamic";
 const HORAS_EMPAREJADO = 12;
 
 const Body = z.object({
-  pin: z.string().regex(/^\d{6}$/, "El PIN son 6 dígitos"),
+  /** Primer envío: el usuario escribe el PIN que muestra la TV. */
+  pin: z.string().regex(/^\d{6}$/, "El PIN son 6 dígitos").optional(),
+  /**
+   * Envíos siguientes: la pantalla ya emparejada. Se usa esto en vez del PIN
+   * porque el PIN caduca a los 10 minutos y el emparejamiento dura horas.
+   */
+  deviceId: z.string().uuid().optional(),
   lessonId: z.string().uuid(),
   reps: z.number().int().min(1).max(5000).optional(),
+}).refine((b) => !!b.pin || !!b.deviceId, {
+  message: "Hace falta el PIN de la TV",
 });
 
 /**
@@ -38,18 +46,36 @@ export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Datos inválidos", 422, { issues: parsed.error.issues });
 
-  // ── 1) ¿Existe una pantalla esperando con ese PIN? ─────────────────────────
+  // ── 1) Localizar la pantalla ───────────────────────────────────────────────
   const ahora = new Date();
-  const [dev] = await db
-    .select()
-    .from(castDevices)
-    .where(and(eq(castDevices.pin, parsed.data.pin), gt(castDevices.pinExpiresAt, ahora)))
-    .limit(1);
-  if (!dev) return fail("PIN no válido o vencido. Vuelve a abrir la app en la TV.", 404);
+  let dev;
 
-  // Una pantalla ya emparejada con OTRO usuario no se secuestra
-  if (dev.userId && dev.userId !== me.id && dev.pairedUntil && dev.pairedUntil > ahora) {
-    return fail("Esa pantalla está emparejada con otra cuenta.", 409);
+  if (parsed.data.deviceId) {
+    // Pantalla ya emparejada con ESTE usuario: no se necesita PIN.
+    [dev] = await db
+      .select()
+      .from(castDevices)
+      .where(and(
+        eq(castDevices.id, parsed.data.deviceId),
+        eq(castDevices.userId, me.id),
+        gt(castDevices.pairedUntil, ahora),
+      ))
+      .limit(1);
+    if (!dev) {
+      return fail("La pantalla ya no está emparejada. Escribe otra vez el PIN que muestra la TV.", 410, { needsPin: true });
+    }
+  } else {
+    [dev] = await db
+      .select()
+      .from(castDevices)
+      .where(and(eq(castDevices.pin, parsed.data.pin!), gt(castDevices.pinExpiresAt, ahora)))
+      .limit(1);
+    if (!dev) return fail("PIN no válido o vencido. Mira el PIN que muestra la TV ahora.", 404, { needsPin: true });
+
+    // Una pantalla ya emparejada con OTRO usuario no se secuestra
+    if (dev.userId && dev.userId !== me.id && dev.pairedUntil && dev.pairedUntil > ahora) {
+      return fail("Esa pantalla está emparejada con otra cuenta.", 409);
+    }
   }
 
   // ── 2) ¿Puede este usuario ver esa lección? ────────────────────────────────
@@ -98,5 +124,7 @@ export async function POST(req: Request) {
   if (!enviado) {
     return fail("El canal en tiempo real no está configurado en el servidor.", 503);
   }
+  // Se devuelve el deviceId: el celular lo guarda y a partir de aquí envía con
+  // él, así el PIN puede caducar sin romper nada.
   return ok({ sent: true, deviceId: dev.id, label: dev.label });
 }

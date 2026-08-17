@@ -73,21 +73,32 @@ class MainActivity : Activity() {
     }
 
     /**
-     * El mando solo sirve para recargar (por si la TV arrancó sin red) y salir.
-     * El resto del control está en el celular, que es el mando de verdad.
+     * El mando NO recarga la página.
+     *
+     * Recargar volvía a registrar la pantalla y, hasta que se guardó su
+     * identidad, eso cambiaba el PIN: el celular seguía enviando al canal
+     * viejo y aquí no aparecía nada. Ahora la identidad se conserva, pero de
+     * todas formas no hay motivo para recargar con el mando: el control real
+     * está en el celular. Solo se deja MENU como recarga manual de emergencia.
      */
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
+            KeyEvent.KEYCODE_MENU -> { web.reload(); true }
+            // Se ignoran para que no interfieran con el video en curso
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
-            KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                web.reload(); true
-            }
+            KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> true
             else -> super.onKeyDown(keyCode, event)
         }
     }
 
-    @Deprecated("Atrás recarga; para salir se usa el botón Inicio del mando")
+    /**
+     * Atrás sale de la app (comportamiento normal en Android TV). No recarga:
+     * al volver a abrirla, la pantalla recupera su identidad y su canal, así
+     * que el emparejamiento del celular sigue sirviendo.
+     */
+    @Deprecated("Atrás cierra la app, como espera el usuario en un televisor")
     override fun onBackPressed() {
-        if (web.canGoBack()) web.goBack() else web.loadUrl(TV_URL)
+        @Suppress("DEPRECATION")
+        super.onBackPressed()
     }
 }
