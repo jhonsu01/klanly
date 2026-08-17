@@ -312,6 +312,19 @@ export const lessons = pgTable(
     content: text("content"),
     /** Material complementario: enlaces externos e imágenes alojadas fuera. */
     resources: jsonb("resources").$type<{ kind: "link" | "image"; label: string; url: string }[]>(),
+    /** "video" = lección normal · "workout" = entrenamiento por repeticiones. */
+    kind: text("kind").notNull().default("video"),
+    /**
+     * Parámetros del modo entrenamiento. El entrenador declara cuántas
+     * repeticiones trae el video; el alumno pide las que quiere y el
+     * reproductor repite el video las pasadas necesarias.
+     */
+    workout: jsonb("workout").$type<{
+      repsPerRound: number;   // repeticiones que contiene el video
+      defaultReps: number;    // objetivo sugerido por el entrenador
+      restSeconds: number;    // descanso entre pasadas
+      muted: boolean;         // silenciar (música propia del alumno)
+    }>(),
     minLevel: integer("min_level").notNull().default(1),
     position: integer("position").notNull().default(0),
   },
@@ -453,3 +466,31 @@ export const auditLog = pgTable("audit_log", {
 export type User = typeof users.$inferSelect;
 export type Community = typeof communities.$inferSelect;
 export type PaymentOrder = typeof paymentOrders.$inferSelect;
+
+// ===================== PANTALLAS EMPAREJADAS (Android TV) =====================
+/**
+ * Un televisor que muestra los entrenamientos. La TV no tiene sesión: pide un
+ * PIN, el alumno lo escribe en el celular y desde ese momento el celular le
+ * envía qué reproducir. El canal de tiempo real usa el `id` (no adivinable),
+ * nunca el PIN de 6 dígitos.
+ */
+export const castDevices = pgTable(
+  "cast_devices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pin: text("pin").notNull(),
+    /** Usuario que emparejó la pantalla (null mientras espera). */
+    userId: uuid("user_id").references(() => users.id),
+    label: text("label"), // nombre que muestra la TV, p. ej. "Sala"
+    /** El PIN deja de servir pasado este momento. */
+    pinExpiresAt: timestamp("pin_expires_at", { withTimezone: true }).notNull(),
+    /** El emparejamiento caduca (hay que volver a emparejar). */
+    pairedUntil: timestamp("paired_until", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pinIdx: index("cast_devices_pin_idx").on(t.pin, t.pinExpiresAt),
+    userIdx: index("cast_devices_user_idx").on(t.userId),
+  }),
+);

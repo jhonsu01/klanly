@@ -15,6 +15,15 @@ const Body = z.object({
   videoUrl: z.string().url().optional(),
   content: z.string().max(10000).optional(),
   minLevel: z.number().int().min(1).max(9).default(1),
+  kind: z.enum(["video", "workout"]).optional(),
+  workout: z.object({
+    // Repeticiones que trae el video, declaradas por el entrenador.
+    repsPerRound: z.number().int().min(1).max(500),
+    // Objetivo sugerido; el alumno lo puede cambiar al entrenar.
+    defaultReps: z.number().int().min(1).max(5000),
+    restSeconds: z.number().int().min(0).max(600),
+    muted: z.boolean().default(false),
+  }).nullable().optional(),
   resources: z.array(z.object({
     kind: z.enum(["link", "image"]),
     label: z.string().max(120).default(""),
@@ -50,6 +59,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       videoUrl: parsed.data.videoUrl,
       content: parsed.data.content,
       resources: parsed.data.resources,
+      kind: parsed.data.kind ?? "video",
+      workout: parsed.data.workout ?? null,
       minLevel: parsed.data.minLevel,
       position: next,
     })

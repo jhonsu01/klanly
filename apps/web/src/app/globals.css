@@ -701,3 +701,158 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
 
   .modpanel .modnav-all { flex: none; width: auto; margin-top: 0; padding: 10px 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Modo entrenamiento (lecciones de entrenador)
+   El alumno mira la pantalla de reojo mientras se mueve: las cifras tienen que
+   leerse de lejos y el conteo va siempre arriba, no tapado por el video.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.wk { display: flex; flex-direction: column; gap: 12px; }
+.wk-hud {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.wk-reps { display: flex; align-items: baseline; gap: 4px; }
+.wk-n {
+  font-family: var(--font-mono); font-size: 46px; font-weight: 700;
+  line-height: 1; letter-spacing: -.03em; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.wk-sep { font-family: var(--font-mono); font-size: 26px; color: var(--dim); }
+.wk-total { font-family: var(--font-mono); font-size: 26px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wk-rondas { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.wk-rondas b { font-size: 15px; color: var(--text); }
+.wk-barra { height: 8px; border-radius: 4px; background: var(--surface2); overflow: hidden; }
+.wk-barra > i {
+  display: block; height: 100%; transition: width .3s ease;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.wk-video {
+  position: relative; border-radius: 12px; overflow: hidden;
+  background: #000; aspect-ratio: 16 / 9;
+}
+.wk-video > video, .wk-video > div, .wk-video iframe {
+  width: 100%; height: 100%; display: block; border: 0;
+}
+.wk-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px; text-align: center;
+  background: rgba(8, 8, 10, .88); backdrop-filter: blur(6px); padding: 20px;
+}
+.wk-cuenta {
+  font-family: var(--font-mono); font-size: clamp(46px, 12vw, 84px); font-weight: 700;
+  line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums;
+}
+
+.wk-ctrl { display: flex; flex-direction: column; gap: 12px; }
+.wk-objetivo {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+}
+.wk-stepper { display: flex; align-items: center; gap: 10px; }
+.wk-stepper b { font-size: 22px; min-width: 3ch; text-align: center; font-variant-numeric: tabular-nums; }
+.wk-botones { display: flex; gap: 10px; flex-wrap: wrap; }
+.wk-botones button { flex: 1 1 140px; min-height: 48px; }
+
+.wk-aviso {
+  background: rgba(246, 198, 103, .07); border: 1px solid rgba(246, 198, 103, .24);
+  border-radius: 12px; padding: 16px 18px;
+}
+
+/* ── Vista de pantalla grande (Android TV) ───────────────────────────────── */
+.wk-tv .wk-n { font-size: clamp(64px, 9vw, 132px); }
+.wk-tv .wk-sep, .wk-tv .wk-total { font-size: clamp(32px, 4.5vw, 64px); }
+.wk-tv .wk-rondas b { font-size: clamp(20px, 2.4vw, 34px); }
+.wk-tv .wk-barra { height: 14px; border-radius: 7px; }
+.wk-tv .wk-video { border-radius: 0; }
+.wk-tv .label { font-size: clamp(12px, 1.3vw, 18px); }
+
+/* ── Ajustes del modo entrenamiento en el editor ─────────────────────────── */
+.wkf { margin-top: 14px; }
+.wkf-switch {
+  display: flex; align-items: flex-start; gap: 11px; cursor: pointer;
+  padding: 13px 14px; border-radius: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  /* Anula el label global (mono, mayúsculas): aquí es texto normal */
+  font-family: var(--font-sans); font-size: 14px; font-weight: 400;
+  letter-spacing: normal; text-transform: none; color: var(--body); margin: 0;
+}
+.wkf-switch:hover { border-color: var(--accent2); }
+.wkf-switch input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--accent); }
+.wkf-switch b { color: var(--text); }
+.wkf-body {
+  margin-top: 10px; padding: 14px; border-radius: 12px;
+  background: var(--input); border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.wkf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.wkf-grid label { margin-top: 0; }
+.wkf-aviso {
+  padding: 11px 13px; border-radius: 10px; font-size: 13px; line-height: 1.55;
+  background: rgba(246, 198, 103, .08); border: 1px solid rgba(246, 198, 103, .26);
+  color: var(--body);
+}
+.wkf-preview {
+  padding: 11px 13px; border-radius: 10px;
+  background: var(--brand-soft, rgba(91, 61, 245, .1));
+  border: 1px solid rgba(139, 92, 246, .3);
+}
+.wkf-preview p { margin-top: 5px; font-size: 13.5px; line-height: 1.55; color: var(--body); }
+.wkf-preview b { color: var(--accent3); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Pantalla de televisor (/tv)
+   Se mira a 3 metros y sin mando: todo en vw, sin nada que pulsar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.tv {
+  position: fixed; inset: 0; background: var(--bg); color: var(--text);
+  display: flex; flex-direction: column; overflow: hidden;
+  /* La TV recorta los bordes (overscan): margen de seguridad */
+  padding: 3vh 4vw;
+}
+.tv-espera { align-items: center; justify-content: center; gap: 2.2vh; text-align: center; }
+.tv-marca { display: flex; align-items: center; gap: 1.4vw; margin-bottom: 1vh; }
+.tv-logo {
+  width: 4.6vw; height: 4.6vw; min-width: 46px; min-height: 46px;
+  border-radius: 1.2vw; display: grid; place-items: center;
+  background: linear-gradient(140deg, var(--accent), var(--accent2));
+  color: #fff; font-weight: 800; font-size: 2.4vw;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .08), 0 1vh 4vh rgba(91, 61, 245, .42);
+}
+.tv-nombre { font-size: 2.6vw; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.tv-sub {
+  font-family: var(--font-mono); font-size: .95vw; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--dim); margin-top: .8vh;
+}
+.tv-hint { font-size: 1.5vw; color: var(--muted); }
+.tv-pin {
+  font-family: var(--font-mono); font-weight: 700;
+  font-size: 15vw; line-height: 1; letter-spacing: .04em;
+  color: var(--text); font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; gap: .02em;
+}
+.tv-pin span { color: var(--accent2); margin: 0 .06em; }
+.tv-pasos {
+  display: flex; gap: 2.4vw; flex-wrap: wrap; justify-content: center;
+  margin-top: 2vh; font-size: 1.15vw; color: var(--muted);
+}
+.tv-pasos b { color: var(--accent3); }
+.tv-msg { font-size: 1.8vw; color: var(--body); }
+
+.tv-barra {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 2vw; margin-bottom: 1.6vh; flex: none;
+}
+.tv-curso {
+  font-family: var(--font-mono); font-size: 1vw; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--dim);
+}
+.tv-leccion { font-size: 2.2vw; font-weight: 650; letter-spacing: -.02em; margin-top: .6vh; }
+.tv-quien { font-family: var(--font-mono); font-size: .95vw; color: var(--dim); }
+.tv-video { flex: 1; border-radius: 1vw; overflow: hidden; background: #000; }
+.tv-video iframe, .tv-video video { width: 100%; height: 100%; border: 0; display: block; }
+/* El reproductor de entrenamiento ocupa el alto restante */
+.tv .wk { flex: 1; min-height: 0; }
+.tv .wk-video { flex: 1; min-height: 0; aspect-ratio: auto; }

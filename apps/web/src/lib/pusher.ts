@@ -27,3 +27,20 @@ export async function trigger(channel: string, event: string, data: unknown) {
     console.error("[pusher] trigger error:", e);
   }
 }
+
+/**
+ * Como `trigger`, pero informa si realmente se envió.
+ * Lo usa el envío a la TV: si el canal no está configurado hay que avisar al
+ * usuario en vez de dejarlo mirando una pantalla que nunca reacciona.
+ */
+export async function pushToChannel(channel: string, event: string, data: unknown): Promise<boolean> {
+  const p = getPusher();
+  if (!p) return false;
+  try {
+    await p.trigger(channel, event, data);
+    return true;
+  } catch (e) {
+    console.error("[pusher] pushToChannel error:", e);
+    return false;
+  }
+}

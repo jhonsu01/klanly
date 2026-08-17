@@ -68,6 +68,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       videoUrl: hide ? null : l.videoUrl,
       content: hide ? null : l.content,
       resources: hide ? [] : (l.resources ?? []),
+      kind: l.kind,
+      // Los parametros del entrenamiento acompanan al video: si el contenido
+      // esta oculto, estos tampoco hacen falta.
+      workout: hide ? null : (l.workout ?? null),
       minLevel: l.minLevel,
       position: l.position,
       completed: completedIds.has(l.id),

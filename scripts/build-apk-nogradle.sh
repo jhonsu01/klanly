@@ -17,32 +17,73 @@
 #  servir (habria que resolver dependencias a mano).
 #
 #  Uso:
-#      ./scripts/build-apk-nogradle.sh                 # compila
-#      ./scripts/build-apk-nogradle.sh --publish       # compila y sube a la Release
+#      ./scripts/build-apk-nogradle.sh                 # app del movil
+#      ./scripts/build-apk-nogradle.sh --tv            # app de Android TV
+#      ./scripts/build-apk-nogradle.sh --tv --publish  # y la sube a la Release
 #      VERSION=0.7.1 ./scripts/build-apk-nogradle.sh   # version explicita
 # ============================================================================
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP="$REPO/apps/android/app"
-GRADLE_FILE="$APP/build.gradle.kts"
-W="$REPO/.tmp/apk"
+
+# Que app se compila: la del movil (por defecto) o la de television
+MODULO="movil"
 PUBLISH=0
-[[ "${1:-}" == "--publish" ]] && PUBLISH=1
+for arg in "$@"; do
+  case "$arg" in
+    --tv) MODULO="tv" ;;
+    --publish) PUBLISH=1 ;;
+  esac
+done
+
+if [[ "$MODULO" == "tv" ]]; then
+  APP="$REPO/apps/androidtv/app"
+  NOMBRE="Klanly-TV"
+  W="$REPO/.tmp/apk-tv"
+else
+  APP="$REPO/apps/android/app"
+  NOMBRE="Klanly"
+  W="$REPO/.tmp/apk"
+fi
+GRADLE_FILE="$APP/build.gradle.kts"
 
 step() { printf '\n\033[36m==> %s\033[0m\n' "$1"; }
 info() { printf '    %s\n' "$1"; }
 fail() { printf '\033[31mERROR: %s\033[0m\n' "$1" >&2; exit 1; }
 
 # ── Version y versionCode ───────────────────────────────────────────────────
-VERSION="${VERSION:-$(tr -d '[:space:]' < "$REPO/VERSION")}"
+# La app del movil sigue el VERSION del repo; la de TV lleva la suya propia
+# (se actualizan por separado y casi nunca a la vez).
+if [[ "$MODULO" == "tv" ]]; then
+  VERSION="${VERSION:-$(grep -oE 'versionName = "[^"]+"' "$GRADLE_FILE" | sed 's/.*"\(.*\)"/\1/')}"
+else
+  VERSION="${VERSION:-$(tr -d '[:space:]' < "$REPO/VERSION")}"
+fi
 VCODE="$(grep -oE 'versionCode = [0-9]+' "$GRADLE_FILE" | grep -oE '[0-9]+')"
 [[ -n "$VERSION" && -n "$VCODE" ]] || fail "no pude determinar version/versionCode"
-printf '\033[32mKlanly APK v%s (versionCode %s) — sin Gradle\033[0m\n' "$VERSION" "$VCODE"
+printf '\033[32m%s APK v%s (versionCode %s) — sin Gradle\033[0m\n' "$NOMBRE" "$VERSION" "$VCODE"
 
 # ── Localizar el SDK y las herramientas ─────────────────────────────────────
-SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$LOCALAPPDATA/Android/Sdk}}"
-[[ -d "$SDK" ]] || fail "no encuentro el Android SDK (define ANDROID_HOME)"
+# Se prueban las ubicaciones habituales en este equipo. Ojo: ANDROID_HOME puede
+# venir con ruta de Windows (E:\Dev\...), que bash no sabe recorrer, asi que se
+# convierte con cygpath.
+declare -a CANDIDATOS=()
+for v in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+  [[ -n "$v" ]] || continue
+  CANDIDATOS+=("$v")
+  # Si viene en formato Windows, su equivalente Unix
+  [[ "$v" == *:* ]] && CANDIDATOS+=("$(cygpath -u "$v" 2>/dev/null || true)")
+done
+CANDIDATOS+=(
+  "/e/Dev/Android/Sdk"                       # ubicacion canonica de este equipo
+  "$HOME/AppData/Local/Android/Sdk"
+  "${LOCALAPPDATA:-}/Android/Sdk"
+)
+SDK=""
+for c in "${CANDIDATOS[@]}"; do
+  [[ -n "$c" && -d "$c/platforms" ]] && { SDK="$c"; break; }
+done
+[[ -n "$SDK" ]] || fail "no encuentro el Android SDK (define ANDROID_HOME o instalalo)"
 
 # build-tools mas reciente
 BT="$(ls -d "$SDK"/build-tools/*/ 2>/dev/null | sort -V | tail -1)"
@@ -143,15 +184,30 @@ cp "$W/base.apk" "$W/unsigned.apk"
 
 # ── 6) Firmar ───────────────────────────────────────────────────────────────
 step "apksigner (firma de depuracion)"
-KS="$HOME/.android/debug.keystore"
-if [[ ! -f "$KS" ]]; then
-  info "creando debug.keystore"
+# El debug.keystore de este equipo vive en ANDROID_USER_HOME (E:\Dev\caches\
+# android), NO en ~/.android. Hay que usar SIEMPRE el mismo: si se firma con
+# otra clave, el APK nuevo no se puede instalar encima del anterior y cambia el
+# SHA-1 que registran servicios como Firebase o Maps.
+KS=""
+for c in \
+  "$([[ -n "${ANDROID_USER_HOME:-}" ]] && cygpath -u "$ANDROID_USER_HOME/debug.keystore" 2>/dev/null || true)" \
+  "/e/Dev/caches/android/debug.keystore" \
+  "$HOME/.android/debug.keystore"
+do [[ -n "$c" && -f "$c" ]] && { KS="$c"; break; }; done
+
+if [[ -z "$KS" ]]; then
+  # No hay ninguno: se crea donde toca, no en el home.
+  KS="${ANDROID_USER_HOME:+$(cygpath -u "$ANDROID_USER_HOME" 2>/dev/null)}/debug.keystore"
+  [[ "$KS" == "/debug.keystore" ]] && KS="$HOME/.android/debug.keystore"
+  mkdir -p "$(dirname "$KS")"
+  info "no habia debug.keystore: creando uno en $KS"
   keytool -genkeypair -v -keystore "$(cygpath -w "$KS")" -storepass android \
     -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 \
     -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 fi
+info "keystore: $KS"
 mkdir -p "$REPO/dist"
-FINAL="$REPO/dist/Klanly-$VERSION.apk"
+FINAL="$REPO/dist/$NOMBRE-$VERSION.apk"
 java -jar "$(cygpath -w "$SIGNERJAR")" sign \
   --ks "$(cygpath -w "$KS")" --ks-pass pass:android \
   --ks-key-alias androiddebugkey --key-pass pass:android \
@@ -159,6 +215,11 @@ java -jar "$(cygpath -w "$SIGNERJAR")" sign \
 
 java -jar "$(cygpath -w "$SIGNERJAR")" verify "$(cygpath -w "$FINAL")" >/dev/null \
   || fail "la firma no verifica"
+
+# Huella de la clave con la que se firmo: si cambia entre versiones, el APK
+# nuevo no se instala encima del anterior.
+SHA1="$(java -jar "$(cygpath -w "$SIGNERJAR")" verify --print-certs "$(cygpath -w "$FINAL")" 2>/dev/null         | grep -i "SHA-1" | head -1 | sed 's/.*: *//')"
+info "huella SHA-1 del firmante: ${SHA1:-(no disponible)}"
 
 MB=$(awk "BEGIN{printf \"%.2f\", $(stat -c%s "$FINAL")/1048576}")
 printf '\n\033[32m==> APK listo y firmado: %s (%s MB)\033[0m\n' "$FINAL" "$MB"
@@ -169,11 +230,14 @@ info "entradas en el APK: $(unzip -l "$FINAL" | tail -1 | awk '{print $2}')"
 
 # ── 7) Publicar ─────────────────────────────────────────────────────────────
 if [[ "$PUBLISH" == "1" ]]; then
-  step "publicando en la Release v$VERSION"
-  if gh release view "v$VERSION" >/dev/null 2>&1; then
-    gh release upload "v$VERSION" "$FINAL" --clobber
+  # Convencion del repo: UNA sola release. La app de TV se sube a la release
+  # vigente (la del archivo VERSION), no crea una propia.
+  TAG="v$(tr -d '[:space:]' < "$REPO/VERSION")"
+  step "publicando $NOMBRE en la Release $TAG"
+  if gh release view "$TAG" >/dev/null 2>&1; then
+    gh release upload "$TAG" "$FINAL" --clobber
   else
-    gh release create "v$VERSION" "$FINAL" --title "Klanly v$VERSION" \
+    gh release create "$TAG" "$FINAL" --title "Klanly $TAG" \
       --notes "Compilado en local sin Gradle (aapt2 + kotlinc + d8 + apksigner)."
   fi
   printf '\033[32m==> https://github.com/jhonsu01/klanly/releases/tag/v%s\033[0m\n' "$VERSION"

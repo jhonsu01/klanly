@@ -7,12 +7,16 @@ import TopBar from "@/components/TopBar";
 import MarkdownEditor from "@/components/MarkdownEditor";
 import ResourceEditor, { ResourceList, type Resource } from "@/components/Resources";
 import ConfirmDanger from "@/components/ConfirmDanger";
+import WorkoutPlayer, { type Workout } from "@/components/WorkoutPlayer";
+import WorkoutFields, { type WkForm } from "@/components/WorkoutFields";
+import CastButton from "@/components/CastButton";
 import { renderMarkdown } from "@/lib/markdown";
 import { parseVideo } from "@/lib/video";
 
 type Lesson = {
   id: string; moduleName?: string | null; title: string; videoUrl?: string | null;
   content?: string | null; resources?: Resource[] | null;
+  kind?: string; workout?: Workout | null;
   minLevel: number; position: number; completed: boolean; locked: boolean;
 };
 type CourseData = {
@@ -26,6 +30,8 @@ type CourseData = {
 };
 
 const empty = { moduleName: "", title: "", videoUrl: "", content: "", minLevel: "1" };
+// Valores de partida del modo entrenamiento (los ajusta el entrenador)
+const emptyWk = { on: false, repsPerRound: "10", defaultReps: "20", restSeconds: "30", muted: false };
 const noRes: Resource[] = [];
 
 export default function CoursePage({ params }: { params: { id: string } }) {
@@ -41,6 +47,8 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   const [cForm, setCForm] = useState({ title: "", description: "", coverUrl: "" });
   const [busy, setBusy] = useState(false);
   const [formRes, setFormRes] = useState<Resource[]>(noRes);
+  const [formWk, setFormWk] = useState({ ...emptyWk });
+  const [editWk, setEditWk] = useState({ ...emptyWk });
   const [editRes, setEditRes] = useState<Resource[]>(noRes);
   const [confirm, setConfirm] = useState<null | { kind: "course" } | { kind: "lesson"; id: string; title: string }>(null);
   // Indice completo de modulos (se abre a peticion, no ocupa la pantalla)
@@ -85,6 +93,9 @@ export default function CoursePage({ params }: { params: { id: string } }) {
   // de anterior/siguiente que cruzan de modulo).
   const curModIdx = Math.max(0, modules.findIndex((m) => m.items.some((l) => l.id === sel)));
   const curMod = modules[curModIdx] ?? null;
+  // Una leccion es de entrenamiento solo si el entrenador la marco Y guardo
+  // los parametros: si falta cualquiera de los dos, se muestra como video.
+  const esEntrenamiento = current?.kind === "workout" && !!current?.workout;
 
   const onPickImage = async (file: File | undefined, apply: (url: string) => void) => {
     if (!file) return;
@@ -99,8 +110,15 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         videoUrl: form.videoUrl || undefined, content: form.content || undefined,
         minLevel: parseInt(form.minLevel || "1", 10),
         resources: formRes.filter((r) => r.url.trim()),
+        kind: formWk.on ? "workout" : "video",
+        workout: formWk.on ? {
+          repsPerRound: Math.max(1, parseInt(formWk.repsPerRound || "10", 10)),
+          defaultReps: Math.max(1, parseInt(formWk.defaultReps || "20", 10)),
+          restSeconds: Math.max(0, parseInt(formWk.restSeconds || "0", 10)),
+          muted: formWk.muted,
+        } : null,
       });
-      setForm({ ...empty }); setFormRes([]); setShowAdd(false); flash("Lección agregada ✔"); load();
+      setForm({ ...empty }); setFormRes([]); setFormWk({ ...emptyWk }); setShowAdd(false); flash("Lección agregada ✔"); load();
     } catch (e: any) { flash(e.message, false); }
   };
   const complete = async (lessonId: string) => {
@@ -111,6 +129,11 @@ export default function CoursePage({ params }: { params: { id: string } }) {
     setEditing(l.id);
     setEditForm({ moduleName: l.moduleName || "", title: l.title, videoUrl: l.videoUrl || "", content: l.content || "", minLevel: String(l.minLevel) });
     setEditRes(l.resources ?? []);
+    setEditWk(l.workout
+      ? { on: l.kind === "workout", repsPerRound: String(l.workout.repsPerRound),
+          defaultReps: String(l.workout.defaultReps), restSeconds: String(l.workout.restSeconds),
+          muted: !!l.workout.muted }
+      : { ...emptyWk });
   };
   const saveEdit = async (lessonId: string) => {
     try {
@@ -118,6 +141,13 @@ export default function CoursePage({ params }: { params: { id: string } }) {
         title: editForm.title, moduleName: editForm.moduleName, videoUrl: editForm.videoUrl,
         content: editForm.content, minLevel: parseInt(editForm.minLevel || "1", 10),
         resources: editRes.filter((r) => r.url.trim()),
+        kind: editWk.on ? "workout" : "video",
+        workout: editWk.on ? {
+          repsPerRound: Math.max(1, parseInt(editWk.repsPerRound || "10", 10)),
+          defaultReps: Math.max(1, parseInt(editWk.defaultReps || "20", 10)),
+          restSeconds: Math.max(0, parseInt(editWk.restSeconds || "0", 10)),
+          muted: editWk.muted,
+        } : null,
       });
       setEditing(null); flash("Lección actualizada ✔"); load();
     } catch (e: any) { flash(e.message, false); }
@@ -220,6 +250,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           <MarkdownEditor value={form.content} onChange={(v) => setForm({ ...form, content: v })} />
           <label className="label">Material complementario (enlaces e imágenes externas)</label>
           <ResourceEditor items={formRes} onChange={setFormRes} />
+          <WorkoutFields value={formWk} onChange={setFormWk} videoUrl={form.videoUrl} />
           <label className="label">Desbloquear en nivel</label>
           <input value={form.minLevel} onChange={(e) => setForm({ ...form, minLevel: e.target.value })} style={{ width: 80 }} />
           <div style={{ marginTop: 8 }}><button onClick={addLesson} disabled={!form.title}>Guardar lección</button></div>
@@ -267,7 +298,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                     className={`les${sel === l.id ? " active" : ""}${l.locked ? " locked" : ""}`}
                     onClick={() => !l.locked && setSel(l.id)}
                   >
-                    <span className="les-ico" aria-hidden>{l.completed ? "✅" : l.locked ? "🔒" : "▶️"}</span>
+                    <span className="les-ico" aria-hidden>{l.completed ? "✅" : l.locked ? "🔒" : l.kind === "workout" ? "💪" : "▶️"}</span>
                     <span className="les-title">{l.title}</span>
                     {d.isManager && (
                       <span className="les-actions" onClick={(e) => e.stopPropagation()}>
@@ -292,8 +323,12 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           {!current && <div className="muted">Selecciona una lección.</div>}
           {current && (
             <>
-              <div className="row">
-                <h2>{current.title}</h2>
+              <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <h2 style={{ flex: 1, minWidth: 0 }}>{current.title}</h2>
+                {esEntrenamiento && <span className="pill brand">Entrenamiento</span>}
+                {esEntrenamiento && !current.locked && (d.isMember || d.isManager) && (
+                  <CastButton lessonId={current.id} reps={current.workout?.defaultReps} onFlash={flash} />
+                )}
                 {d.isManager && <button className="ghost" style={{ marginTop: 0 }} onClick={() => (editing === current.id ? setEditing(null) : startEdit(current))}>{editing === current.id ? "Cerrar" : "✏️ Editar"}</button>}
               </div>
 
@@ -306,6 +341,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                   <MarkdownEditor value={editForm.content} onChange={(v) => setEditForm({ ...editForm, content: v })} />
                   <label className="label">Material complementario (enlaces e imágenes externas)</label>
                   <ResourceEditor items={editRes} onChange={setEditRes} />
+                  <WorkoutFields value={editWk} onChange={setEditWk} videoUrl={editForm.videoUrl} />
                   <label className="label">Nivel</label><input value={editForm.minLevel} onChange={(e) => setEditForm({ ...editForm, minLevel: e.target.value })} style={{ width: 80 }} />
                   <div style={{ marginTop: 8 }}><button onClick={() => saveEdit(current.id)}>Guardar cambios</button></div>
                 </div>
@@ -313,7 +349,16 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                 <div className="muted" style={{ marginTop: 12 }}>🔒 Se desbloquea en el nivel {current.minLevel} (tienes nivel {d.myLevel}).</div>
               ) : (
                 <div style={{ marginTop: 12 }}>
-                  {video?.kind === "youtube" || video?.kind === "vimeo" ? (
+                  {/* Leccion de entrenador: contador de repeticiones en vez del
+                      reproductor normal. */}
+                  {esEntrenamiento && current.videoUrl ? (
+                    <WorkoutPlayer
+                      key={current.id}
+                      videoUrl={current.videoUrl}
+                      workout={current.workout as Workout}
+                      onFinish={() => { if (d.isMember && !current.completed) complete(current.id); }}
+                    />
+                  ) : video?.kind === "youtube" || video?.kind === "vimeo" ? (
                     <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 10, overflow: "hidden", background: "var(--surface2)" }}>
                       <iframe src={video.embedUrl} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={current.title} />
                     </div>

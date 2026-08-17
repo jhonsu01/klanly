@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Paleta Klanly Nocturno (sincronizada con apps/web/src/app/globals.css). -->
+    <color name="nocturno_bg">#FF08080A</color>
+    <color name="klanly_accent">#FF5B3DF5</color>
+</resources>

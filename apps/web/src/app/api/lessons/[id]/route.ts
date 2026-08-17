@@ -27,6 +27,15 @@ const Body = z.object({
   videoUrl: z.string().url().optional().or(z.literal("")),
   content: z.string().max(10000).optional(),
   minLevel: z.number().int().min(1).max(9).optional(),
+  kind: z.enum(["video", "workout"]).optional(),
+  workout: z.object({
+    // Repeticiones que trae el video, declaradas por el entrenador.
+    repsPerRound: z.number().int().min(1).max(500),
+    // Objetivo sugerido; el alumno lo puede cambiar al entrenar.
+    defaultReps: z.number().int().min(1).max(5000),
+    restSeconds: z.number().int().min(0).max(600),
+    muted: z.boolean().default(false),
+  }).nullable().optional(),
   resources: z.array(z.object({
     kind: z.enum(["link", "image"]),
     label: z.string().max(120).default(""),
@@ -60,6 +69,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (parsed.data.videoUrl !== undefined) patch.videoUrl = parsed.data.videoUrl || null;
   if (parsed.data.resources !== undefined) patch.resources = parsed.data.resources;
+  if (parsed.data.kind !== undefined) patch.kind = parsed.data.kind;
+  if (parsed.data.workout !== undefined) patch.workout = parsed.data.workout;
   if (Object.keys(patch).length === 0) return ok({ updated: false });
 
   const [updated] = await db.update(lessons).set(patch).where(eq(lessons.id, params.id)).returning();

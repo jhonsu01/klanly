@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Tema de la app de television. Deriva del Material oscuro del framework
+      (sin AppCompat ni leanback, para no arrastrar dependencias) y sin barra de
+      titulo: la TV muestra la pagina a pantalla completa.
+      El windowBackground oscuro evita el destello blanco al arrancar.
+    -->
+    <style name="Theme.KlanlyTv" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/nocturno_bg</item>
+        <item name="android:colorBackground">@color/nocturno_bg</item>
+        <item name="android:statusBarColor">@color/nocturno_bg</item>
+        <item name="android:navigationBarColor">@color/nocturno_bg</item>
+    </style>
+</resources>

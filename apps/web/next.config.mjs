@@ -22,7 +22,9 @@ const securityHeaders = [
       "object-src 'none'",
       "frame-ancestors 'self'",
       "form-action 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // youtube.com + ytimg: la IFrame API, necesaria para saber cuando termina
+      // el video y contar las repeticiones del modo entrenamiento.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "media-src 'self' https: blob:",
