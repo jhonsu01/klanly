@@ -111,10 +111,23 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
 
   const b = parsed.data;
 
-  // Cambiar las cuentas donde reciben el dinero es sensible → exige confirmación.
+  // Cambiar las cuentas donde se recibe el dinero es sensible: si alguien te
+  // roba la sesión, redirigir los pagos es el ataque obvio. Pero eso solo
+  // aplica cuando YA hay cuentas puestas: configurarlas por primera vez no
+  // tiene nada que robar, y pedir un código por correo ahí solo consigue que
+  // el productor no pueda terminar de montar su comunidad si el correo tarda
+  // o cae en spam.
   if (b.manualAccounts !== undefined) {
-    const stepOk = await verifyStepUp(me, b.code);
-    if (!stepOk) return fail("Para cambiar las cuentas de pago confirma con el código (correo o 2FA).", 400, { needsCode: true });
+    const yaTenia = (c.manualAccounts ?? []).some((a) => a.number?.trim());
+    if (yaTenia) {
+      const stepOk = await verifyStepUp(me, b.code);
+      if (!stepOk) {
+        return fail(
+          "Para CAMBIAR tus cuentas de cobro confirma con el código (revisa también el spam) o con tu 2FA.",
+          400, { needsCode: true },
+        );
+      }
+    }
   }
 
   const patch: Record<string, unknown> = {};

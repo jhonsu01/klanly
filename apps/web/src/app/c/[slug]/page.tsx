@@ -229,8 +229,12 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
       const cleanAccounts = manualAccounts.filter((a) => a.bank || a.number || a.name);
       // Las cuentas de pago son sensibles: solo se envían (y piden confirmación) si cambiaron.
       const accountsChanged = JSON.stringify(cleanAccounts) !== JSON.stringify(c.manualAccounts ?? []);
+      // El código solo hace falta para CAMBIAR cuentas que ya existían; al
+      // ponerlas por primera vez no se pide nada (el servidor hace la misma
+      // distinción).
+      const yaTenia = (c.manualAccounts ?? []).some((a) => a.number?.trim());
       let code: string | null = null;
-      if (accountsChanged) {
+      if (accountsChanged && yaTenia) {
         code = await askStepUp("el cambio de tus cuentas de pago");
         if (!code) return;
       }
