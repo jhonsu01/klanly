@@ -430,11 +430,22 @@ input, textarea, select { max-width: 100%; }
 .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--border2); flex: none; }
 
 /* ── Pestañas con subrayado (reemplazan los botones-pastilla) ───────────── */
+/* La tira se desplaza en horizontal. Se le pone un degradado al borde derecho
+   para que se VEA que hay mas pestanas: sin el, "Ajustes" quedaba fuera del
+   ancho y parecia que no existiera. */
+.tabs-wrap { position: relative; }
+.tabs-wrap::after {
+  content: ""; position: absolute; right: 0; top: 0; bottom: 1px; width: 44px;
+  pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: linear-gradient(90deg, transparent, var(--bg) 78%);
+}
+.tabs-wrap.hay-mas::after { opacity: 1; }
 .tabs {
   display: flex; align-items: center; gap: 24px;
   margin-top: 20px; border-bottom: 1px solid var(--hairline);
   overflow-x: auto; overflow-y: hidden;
   scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  scroll-padding-inline: 24px;
 }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
@@ -891,3 +902,15 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
   .lesson-head h2 { flex: 1 1 100%; }
   .lesson-head .lesson-acciones { margin-left: 0; }
 }
+
+
+/* Acciones del dueno en la cabecera de la comunidad */
+.brand-acciones { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-self: center; }
+@media (max-width: 560px) { .brand-acciones { width: 100%; margin-left: 0; } .brand-acciones button { flex: 1; } }
+
+/* Aviso al dueno cuando falta algo imprescindible para cobrar */
+.aviso-owner {
+  margin-top: 14px; padding: 16px 18px; border-radius: 14px;
+  background: rgba(246, 198, 103, .07); border: 1px solid rgba(246, 198, 103, .3);
+}
+.aviso-owner p { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--body); max-width: 62ch; }

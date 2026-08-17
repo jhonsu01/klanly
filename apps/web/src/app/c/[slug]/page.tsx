@@ -74,6 +74,9 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
   const [meId, setMeId] = useState<string | null>(null);
   const [viewer, setViewer] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
+  // ¿Quedan pestañas fuera del ancho visible? Controla el degradado del borde
+  const [hayMasTabs, setHayMasTabs] = useState(false);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
   // Pestañas que quedan detrás del botón "Más" de la barra inferior
@@ -126,6 +129,20 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
     document.body.classList.add("has-bottomnav");
     return () => document.body.classList.remove("has-bottomnav");
   }, []);
+
+  // La tira de pestañas se desplaza en horizontal: hay que avisar de que queda
+  // contenido fuera y llevar la pestaña activa a la vista (si no, "Ajustes"
+  // quedaba invisible y el productor no encontraba sus cuentas de cobro).
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const medir = () => setHayMasTabs(el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
+    medir();
+    el.addEventListener("scroll", medir, { passive: true });
+    window.addEventListener("resize", medir);
+    el.querySelector(".tab.active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    return () => { el.removeEventListener("scroll", medir); window.removeEventListener("resize", medir); };
+  }, [tab, c]);
 
   // Capturar ?ref= del link de afiliado
   useEffect(() => {
@@ -321,8 +338,35 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
             {daysLeft !== null && <span className="pill ok">Tu acceso · {daysLeft} días</span>}
           </div>
         </div>
+
+        {/* Acciones del dueño SIEMPRE visibles aquí, no dentro de la tira de
+            pestañas: con muchas pestañas, "Ajustes" quedaba fuera del ancho y
+            el productor no encontraba dónde poner sus cuentas de cobro. */}
+        {isOwner && (
+          <div className="brand-acciones">
+            <button className="ghost" style={{ marginTop: 0 }} onClick={() => goTab("settings")}>
+              ⚙️ Ajustes
+            </button>
+          </div>
+        )}
       </div>
       {c.description && <p className="muted" style={{ marginTop: 8 }}>{c.description}</p>}
+
+      {/* Una comunidad que cobra sin cuentas configuradas no puede cobrar: el
+          miembro llega al paso de pagar y no ve a dónde transferir. */}
+      {isOwner && !isFree && manualEnabled && manualAccounts.filter((a) => a.number.trim()).length === 0 && (
+        <div className="aviso-owner">
+          <div className="label" style={{ color: "var(--gold)" }}>Falta configurar tus cuentas de cobro</div>
+          <p>
+            Tu comunidad cobra {money(c.priceCents, c.currency)}, pero todavía no
+            has puesto dónde recibir el dinero. Tus miembros ven el precio y no
+            pueden pagarte.
+          </p>
+          <button style={{ marginTop: 12 }} onClick={() => goTab("settings")}>
+            Poner mis cuentas de cobro
+          </button>
+        </div>
+      )}
       {msg && <div className={`toast ${msg.ok ? "ok" : "err"}`}>{msg.t}</div>}
       {viewer && <ImageViewer src={viewer} onClose={() => setViewer(null)} />}
 
@@ -426,7 +470,8 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         </div>
       )}
 
-      <div className="tabs">
+      <div className={`tabs-wrap${hayMasTabs ? " hay-mas" : ""}`}>
+        <div className="tabs" ref={tabsRef}>
         <TabBtn id="community" label="Comunidad" />
         <TabBtn id="classroom" label="Classroom" count={courses.length} />
         <TabBtn id="calendar" label="Calendario" count={evs.length} />
@@ -437,7 +482,8 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         {isManager && <TabBtn id="income" label="Ingresos" />}
         {isManager && <TabBtn id="review" label="Comprobantes" count={pending.length} alert />}
         <TabBtn id="about" label="Acerca de" />
-        {isOwner && <TabBtn id="settings" label="Ajustes" />}
+          {isOwner && <TabBtn id="settings" label="Ajustes" />}
+        </div>
       </div>
 
       {tab === "community" && (
