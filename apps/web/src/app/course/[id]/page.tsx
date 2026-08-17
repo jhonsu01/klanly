@@ -323,13 +323,15 @@ export default function CoursePage({ params }: { params: { id: string } }) {
           {!current && <div className="muted">Selecciona una lección.</div>}
           {current && (
             <>
-              <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <h2 style={{ flex: 1, minWidth: 0 }}>{current.title}</h2>
-                {esEntrenamiento && <span className="pill brand">Entrenamiento</span>}
-                {esEntrenamiento && !current.locked && (d.isMember || d.isManager) && (
-                  <CastButton lessonId={current.id} reps={current.workout?.defaultReps} onFlash={flash} />
-                )}
-                {d.isManager && <button className="ghost" style={{ marginTop: 0 }} onClick={() => (editing === current.id ? setEditing(null) : startEdit(current))}>{editing === current.id ? "Cerrar" : "✏️ Editar"}</button>}
+              <div className="lesson-head">
+                <h2>{current.title}</h2>
+                <div className="lesson-acciones">
+                  {esEntrenamiento && <span className="pill brand">Entrenamiento</span>}
+                  {esEntrenamiento && !current.locked && (d.isMember || d.isManager) && (
+                    <CastButton lessonId={current.id} reps={current.workout?.defaultReps} onFlash={flash} />
+                  )}
+                  {d.isManager && <button className="ghost" style={{ marginTop: 0 }} onClick={() => (editing === current.id ? setEditing(null) : startEdit(current))}>{editing === current.id ? "Cerrar" : "✏️ Editar"}</button>}
+                </div>
               </div>
 
               {editing === current.id && d.isManager ? (

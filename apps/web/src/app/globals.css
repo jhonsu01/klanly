@@ -388,7 +388,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 html, body { max-width: 100%; overflow-x: hidden; }
 .container { width: 100%; }
 .card { overflow-wrap: anywhere; min-width: 0; }
-.card h1, .card h2, .card h3 { overflow-wrap: anywhere; }
+/* break-word, NO anywhere: `anywhere` deja que el ancho minimo del titulo
+   colapse hasta una letra, y dentro de un flex el titulo se apila en vertical
+   (una letra por linea). `break-word` parte palabras largas igual, pero
+   conserva el ancho minimo. */
+.card h1, .card h2, .card h3 { overflow-wrap: break-word; }
 /* Los hijos de flex/grid no encogen por debajo de su contenido si no se fuerza */
 .grid > *, .course-grid > * { min-width: 0; }
 .row { gap: 10px; flex-wrap: wrap; overflow-wrap: anywhere; }
@@ -866,3 +870,24 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
   font-family: var(--font-mono); font-size: 1vw; color: var(--dim); margin-top: 1.5vh;
 }
 .tv-pin-chico b { color: var(--muted); letter-spacing: .12em; }
+
+
+/* ── Cabecera de la leccion: titulo + estado + acciones ──────────────────────
+   El titulo nunca se comprime: si las acciones no caben, bajan a otra linea. */
+.lesson-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.lesson-head h2 {
+  flex: 1 1 14rem;   /* nunca por debajo de ~14rem: no se apila en vertical */
+  min-width: 0; margin-bottom: 0;
+}
+.lesson-head .lesson-acciones {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-left: auto;
+}
+@media (max-width: 560px) {
+  /* En vertical el titulo ocupa su propia linea y las acciones van debajo */
+  .lesson-head h2 { flex: 1 1 100%; }
+  .lesson-head .lesson-acciones { margin-left: 0; }
+}
