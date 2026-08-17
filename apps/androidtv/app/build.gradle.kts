@@ -12,8 +12,8 @@ android {
         // Android TV arranca en API 21; 24 va sobrado y coincide con la app movil
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.8.0"
+        versionCode = 2
+        versionName = "0.8.1"
     }
 
     buildTypes {
