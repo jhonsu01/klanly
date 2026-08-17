@@ -914,3 +914,24 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
   background: rgba(246, 198, 103, .07); border: 1px solid rgba(246, 198, 103, .3);
 }
 .aviso-owner p { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--body); max-width: 62ch; }
+
+/* ── Botón de la pantalla de TV (se maneja con el control) ────────────────── */
+.tv-btn {
+  margin-top: 2vh; padding: 1.6vh 2.6vw; border-radius: 1vw;
+  font-size: clamp(15px, 1.5vw, 26px); font-weight: 600;
+  background: var(--accent); color: #fff; border: 2px solid transparent;
+  box-shadow: 0 1vh 4vh rgba(91, 61, 245, .35); cursor: pointer;
+}
+.tv-btn-suave {
+  background: var(--surface2); color: var(--text); border-color: var(--border2);
+  box-shadow: none;
+}
+/* El foco tiene que verse desde el sofá: es lo único que dice dónde está el
+   cursor del control. */
+.tv-btn:focus-visible, .tv-btn:focus {
+  outline: none; border-color: var(--accent3);
+  box-shadow: 0 0 0 .5vh rgba(139, 92, 246, .45), 0 1vh 4vh rgba(91, 61, 245, .4);
+  transform: scale(1.03);
+}
+/* En un televisor el botón flotante de tema estorba y roba el foco del mando */
+body.es-tv .theme-toggle { display: none; }

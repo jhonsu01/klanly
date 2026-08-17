@@ -22,6 +22,7 @@ export default function ThemeToggle() {
     <button
       onClick={toggle}
       title="Cambiar tema"
+      className="theme-toggle"
       style={{
         position: "fixed", bottom: 16, right: 16, zIndex: 50, marginTop: 0,
         borderRadius: 999, width: 44, height: 44, fontSize: 18,

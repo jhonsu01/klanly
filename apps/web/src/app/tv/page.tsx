@@ -41,10 +41,11 @@ export default function TvPage() {
   const reintento = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Registrarse o recuperar la identidad ──────────────────────────────────
-  const registrar = useCallback(async () => {
+  const registrar = useCallback(async (reset = false) => {
     setError(null);
     try {
-      const cuerpo: Record<string, string> = { label: "TV" };
+      const cuerpo: Record<string, unknown> = { label: "TV" };
+      if (reset) cuerpo.reset = true;
       const id = localStorage.getItem(LS_ID);
       const secret = localStorage.getItem(LS_SECRET);
       if (id && secret) { cuerpo.deviceId = id; cuerpo.deviceSecret = secret; }
@@ -77,7 +78,12 @@ export default function TvPage() {
 
   useEffect(() => {
     registrar();
-    return () => { if (reintento.current) clearTimeout(reintento.current); };
+    // En un televisor el botón flotante de tema solo estorba y roba el foco
+    document.body.classList.add("es-tv");
+    return () => {
+      document.body.classList.remove("es-tv");
+      if (reintento.current) clearTimeout(reintento.current);
+    };
   }, [registrar]);
 
   // ── Escuchar el canal (se resuscribe si cambia) ───────────────────────────
@@ -173,8 +179,14 @@ export default function TvPage() {
           <div className="tv-hint">
             Elige un entrenamiento en el celular y pulsa <b>Ver en la TV</b>
           </div>
+
+          {/* Para pasar la pantalla a OTRA cuenta: suelta el emparejamiento y
+              saca un código nuevo. Antes había que borrar los datos de la app. */}
+          <button className="tv-btn" onClick={() => registrar(true)} autoFocus>
+            Emparejar otro dispositivo
+          </button>
           <div className="tv-pin-chico">
-            Si necesitas volver a emparejar, el código es <b>{est.pin}</b>
+            Pulsa OK en el control para generar un código nuevo
           </div>
         </>
       ) : (
@@ -186,6 +198,9 @@ export default function TvPage() {
             <span><b>2</b> Entra a una lección de entrenamiento</span>
             <span><b>3</b> Pulsa <b>Ver en la TV</b> y escribe el código</span>
           </div>
+          <button className="tv-btn tv-btn-suave" onClick={() => registrar(true)} autoFocus>
+            Generar otro código
+          </button>
         </>
       )}
 

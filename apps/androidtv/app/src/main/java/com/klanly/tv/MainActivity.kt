@@ -51,8 +51,14 @@ class MainActivity : Activity() {
         web.settings.useWideViewPort = true
         web.setBackgroundColor(0xFF08080A.toInt())  // fondo Nocturno, sin destello
 
+        // Sin esto el WebView puede no recibir las pulsaciones del mando y los
+        // botones de la pagina quedan inalcanzables.
+        web.isFocusable = true
+        web.isFocusableInTouchMode = true
+
         web.loadUrl(TV_URL)
         setContentView(web)
+        web.requestFocus()
     }
 
     /** Oculta las barras del sistema: la TV es una pantalla, no un escritorio. */
@@ -84,9 +90,10 @@ class MainActivity : Activity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_MENU -> { web.reload(); true }
-            // Se ignoran para que no interfieran con el video en curso
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
-            KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> true
+            // OK / ENTER / flechas NO se interceptan: la pagina tiene botones
+            // (por ejemplo "Emparejar otro dispositivo") y el mando debe poder
+            // moverse entre ellos y pulsarlos. Interceptarlos los dejaba
+            // inservibles.
             else -> super.onKeyDown(keyCode, event)
         }
     }

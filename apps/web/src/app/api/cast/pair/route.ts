@@ -33,6 +33,12 @@ const Body = z.object({
   /** Identidad que la TV guardó la primera vez, para recuperarla al recargarse. */
   deviceId: z.string().uuid().optional(),
   deviceSecret: z.string().min(16).max(128).optional(),
+  /**
+   * La propia TV pide soltar el emparejamiento y sacar un PIN nuevo, para que
+   * otra cuenta pueda usarla. Antes la unica salida era borrar los datos de la
+   * app: la pantalla quedaba atada al primer usuario que la emparejo.
+   */
+  reset: z.boolean().optional(),
 });
 
 /**
@@ -63,6 +69,22 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (dev && dev.deviceSecret === body.deviceSecret) {
+      // Soltar el emparejamiento: la pantalla vuelve a estar libre y saca PIN
+      // nuevo, conservando su canal (el celular anterior recibira "ya no esta
+      // emparejada" y pedira el codigo otra vez).
+      if (body.reset) {
+        const pin = await pinLibre();
+        const pinExpiresAt = new Date(Date.now() + PIN_MINUTOS * 60_000);
+        await db.update(castDevices)
+          .set({ pin, pinExpiresAt, userId: null, pairedUntil: null, lastSeenAt: ahora })
+          .where(eq(castDevices.id, dev.id));
+        return ok({
+          deviceId: dev.id, deviceSecret: dev.deviceSecret, pin,
+          channel: `cast-${dev.id}`, paired: false,
+          expiresInSeconds: PIN_MINUTOS * 60,
+        });
+      }
+
       const emparejada = !!dev.userId && !!dev.pairedUntil && dev.pairedUntil > ahora;
 
       // Si sigue emparejada no se toca el PIN: el celular ya sabe enviar aquí.
