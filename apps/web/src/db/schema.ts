@@ -30,6 +30,12 @@ export const users = pgTable("users", {
   producerAccessUntil: timestamp("producer_access_until", { withTimezone: true }), // vigencia del plan
   producerPlanMonths: integer("producer_plan_months"), // plan solicitado (meses)
   producerProofUrl: text("producer_proof_url"), // comprobante de pago del plan
+  /**
+   * Cuantas comunidades puede tener publicadas. Cada pago aprobado por el
+   * admin da derecho a UNA. Antes un solo pago abria comunidades ilimitadas
+   * mientras durara la vigencia: el cobro no se correspondia con lo entregado.
+   */
+  communityQuota: integer("community_quota").notNull().default(0),
   totpSecret: text("totp_secret"),
   /** Cuenta eliminada por el usuario: se anonimiza, no se borra la fila
    *  (los registros contables de pagos deben conservarse). */

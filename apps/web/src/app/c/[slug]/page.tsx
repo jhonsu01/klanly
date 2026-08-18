@@ -247,7 +247,10 @@ export default function CommunityPage({ params }: { params: { slug: string } }) 
         affiliateCommissionPct: parseFloat(settings.commissionPct || "0"),
         payoutTermsDays: settings.payoutTermsDays,
         manualEnabled,
-        ...(accountsChanged ? { manualAccounts: cleanAccounts, code } : {}),
+        // El `code` solo viaja si de verdad hay uno: mandarlo en null hacia
+        // fallar la validacion del servidor al configurar las cuentas por
+        // primera vez, que es justo cuando no se pide codigo.
+        ...(accountsChanged ? { manualAccounts: cleanAccounts, ...(code ? { code } : {}) } : {}),
       });
       flash("Comunidad actualizada ✔"); load();
     } catch (e: any) { flash(e.message, false); }

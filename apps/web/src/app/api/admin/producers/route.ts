@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { inArray } from "drizzle-orm";
+import { communities, users } from "@/db/schema";
+import { inArray, sql } from "drizzle-orm";
 import { currentUser } from "@/lib/auth";
 import { ok, fail } from "@/lib/http";
 
@@ -24,6 +24,11 @@ export async function GET() {
       proofUrl: users.producerProofUrl,
       accessUntil: users.producerAccessUntil,
       createdAt: users.createdAt,
+      // Para decidir con criterio: cuantas comunidades tiene pagadas y cuantas usa
+      communityQuota: users.communityQuota,
+      ownedCommunities: sql<number>`(
+        select count(*)::int from ${communities} where ${communities.ownerId} = ${users.id}
+      )`,
     })
     .from(users)
     .where(inArray(users.producerStatus, ["pending", "approved", "rejected"]))

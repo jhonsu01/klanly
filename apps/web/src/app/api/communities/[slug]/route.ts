@@ -87,7 +87,10 @@ const PatchBody = z.object({
     number: z.string().max(60),
     name: z.string().max(80),
   })).max(8).optional(),
-  code: z.string().min(6).max(6).optional(), // step-up: requerido solo al tocar medios de pago
+  // `nullish` y no `optional`: el formulario manda `code: null` cuando NO hace
+  // falta confirmar (primera vez que se ponen las cuentas). Con `optional` eso
+  // era un fallo de validacion y el productor solo veia "Datos invalidos".
+  code: z.string().min(6).max(6).nullish(), // step-up: requerido solo al CAMBIAR medios de pago
 });
 
 // Editar la comunidad (solo owner o admin de plataforma)
@@ -107,7 +110,14 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
   if (!isOwner) return fail("Solo el owner puede editar la comunidad", 403);
 
   const parsed = PatchBody.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return fail("Datos inválidos", 422, { issues: parsed.error.issues });
+  if (!parsed.success) {
+    // "Datos inválidos" a secas no le dice nada a nadie: hay que nombrar el campo.
+    const campos = [...new Set(parsed.error.issues.map((i) => i.path.join(".")).filter(Boolean))];
+    return fail(
+      campos.length ? `Revisa estos campos: ${campos.join(", ")}` : "Datos inválidos",
+      422, { issues: parsed.error.issues },
+    );
+  }
 
   const b = parsed.data;
 

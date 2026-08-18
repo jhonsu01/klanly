@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, uploadFile, money } from "@/lib/api-client";
 import FilePicker from "@/components/FilePicker";
 
-type Me = { id: string; email: string; displayName: string; handle: string; role: string; emailVerified?: boolean; producerStatus?: string; producerAccessUntil?: string | null } | null;
+type Me = { id: string; email: string; displayName: string; handle: string; role: string; emailVerified?: boolean; producerStatus?: string; producerAccessUntil?: string | null; communityQuota?: number; ownedCommunities?: number } | null;
 type Community = {
   id: string;
   slug: string;
@@ -53,12 +53,20 @@ export default function Home() {
   };
   useEffect(() => { refresh(); }, []);
 
-  // Cargar planes cuando el usuario no es productor aprobado
+  // Los planes hacen falta a quien no es productor Y tambien a quien ya lo es
+  // pero gasto su cupo: cada comunidad nueva se paga aparte.
   useEffect(() => {
-    if (me && me.role !== "admin" && me.producerStatus !== "approved") {
+    if (me && me.role !== "admin") {
       api("/producer/plans").then((d) => { setPlans(d.plans || []); setAdminAccounts(d.adminAccounts || []); }).catch(() => {});
     }
   }, [me]);
+
+  /* Cupo de comunidades: cada pago aprobado habilita UNA. `hayCupo` decide si
+     se puede publicar; `cupoGastado` distingue al productor que ya pago y uso
+     su cupo (puede pedir otra) del que nunca fue aprobado. */
+  const cupoLibre = Math.max(0, (me?.communityQuota ?? 0) - (me?.ownedCommunities ?? 0));
+  const hayCupo = me?.producerStatus === "approved" && cupoLibre > 0;
+  const cupoGastado = (me?.communityQuota ?? 0) > 0 && cupoLibre === 0;
 
   const flash = (t: string, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 4000); };
   const uploadProof = async (file?: File) => {
@@ -247,8 +255,13 @@ export default function Home() {
           {showCreate && <div style={{ marginTop: 12 }}>
           {!me ? (
             <div className="muted">Inicia sesión para crear una comunidad.</div>
-          ) : (me.role === "admin" || me.producerStatus === "approved") ? (
+          ) : (me.role === "admin" || hayCupo) ? (
             <>
+              {me.role !== "admin" && (
+                <div className="out" style={{ marginBottom: 10 }}>
+                  Cupo disponible: <b>{cupoLibre}</b> comunidad(es). Cada una se paga aparte.
+                </div>
+              )}
               <label>Nombre</label>
               <input value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Mi Comunidad" />
               <label>Descripción</label>
@@ -258,10 +271,21 @@ export default function Home() {
               <button onClick={createCommunity} disabled={!cName}>Crear comunidad</button>
             </>
           ) : me.producerStatus === "pending" ? (
-            <div className="muted">Tu solicitud para ser <b>productor</b> está pendiente de aprobación del administrador.</div>
+            <div className="muted">
+              Tu solicitud está <b>pendiente de aprobación</b> del administrador. En cuanto
+              verifique el pago se habilita el cupo para publicar tu comunidad.
+            </div>
           ) : (
             <>
-              <div className="muted" style={{ marginBottom: 8 }}>Para publicar comunidades, elige un plan de acceso, paga a una de las cuentas y sube tu comprobante. El administrador verifica y te aprueba.</div>
+              {cupoGastado ? (
+                <div className="out" style={{ marginBottom: 10 }}>
+                  Ya usaste tu cupo: <b>{me.ownedCommunities} de {me.communityQuota}</b> comunidad(es).
+                  Para publicar otra, paga un plan más y envía el comprobante; el administrador
+                  lo aprueba y se te habilita <b>una</b> comunidad nueva.
+                </div>
+              ) : (
+                <div className="muted" style={{ marginBottom: 8 }}>Para publicar una comunidad, elige un plan, paga a una de las cuentas y sube tu comprobante. El administrador verifica y te aprueba. <b>Cada comunidad se paga y se aprueba por separado.</b></div>
+              )}
               <label>Plan de acceso</label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                 {plans.length === 0 && <div className="muted">El administrador aún no configuró planes.</div>}
@@ -289,8 +313,10 @@ export default function Home() {
                 onPick={(f) => uploadProof(f)}
                 onClear={() => setProdProof("")}
               />
-              <button onClick={applyProducer} disabled={!selPlan || busy}>Enviar solicitud</button>
-              {me.producerStatus === "rejected" && <div className="out err" style={{ marginTop: 8 }}>Tu solicitud anterior fue rechazada.</div>}
+              <button onClick={applyProducer} disabled={!selPlan || busy}>
+                {cupoGastado ? "Solicitar otra comunidad" : "Enviar solicitud"}
+              </button>
+              {me.producerStatus === "rejected" && <div className="out err" style={{ marginTop: 8 }}>Tu solicitud anterior fue rechazada.{cupoGastado ? " Tus comunidades publicadas siguen activas." : ""}</div>}
             </>
           )}
           </div>}

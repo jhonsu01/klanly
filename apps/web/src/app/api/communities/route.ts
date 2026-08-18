@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/db";
 import { communities, memberships, users } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { currentUser } from "@/lib/auth";
 import { ok, fail, slugify } from "@/lib/http";
 
@@ -42,14 +42,35 @@ export async function POST(req: Request) {
   if (!me) return fail("No autenticado", 401);
   if (!me.emailVerified) return fail("Verifica tu correo para continuar.", 403, { needsVerify: true });
 
-  // Solo productores aprobados con acceso vigente (o el admin) pueden publicar
+  /* Cada comunidad se paga y se aprueba por separado.
+     Antes bastaba UN pago para abrir comunidades sin limite mientras durara la
+     vigencia. Ahora cada aprobacion del admin suma un cupo (`communityQuota`) y
+     publicar consume uno: el cobro se corresponde con lo que se entrega. */
   if (me.platformRole !== "admin") {
-    const expired = me.producerAccessUntil && new Date(me.producerAccessUntil).getTime() <= Date.now();
-    if (me.producerStatus !== "approved" || expired) {
+    const expirado = me.producerAccessUntil && new Date(me.producerAccessUntil).getTime() <= Date.now();
+    if (expirado) {
+      return fail("Tu acceso de productor venció. Renueva tu plan.", 403,
+        { needsProducer: true, producerStatus: me.producerStatus, expired: true });
+    }
+
+    const [{ propias }] = await db
+      .select({ propias: sql<number>`count(*)::int` })
+      .from(communities)
+      .where(eq(communities.ownerId, me.id));
+
+    if (propias >= me.communityQuota) {
+      const yaFueAprobado = me.communityQuota > 0 || propias > 0;
       return fail(
-        expired ? "Tu acceso de productor venció. Renueva tu plan." : "Debes ser productor aprobado para publicar. Aplica desde tu cuenta.",
+        me.producerStatus === "pending"
+          ? "Tu solicitud está en revisión. El administrador la aprobará cuando verifique el pago."
+          : yaFueAprobado
+            ? `Cada comunidad se paga por separado. Ya usaste tu cupo (${propias} de ${me.communityQuota}): envía una solicitud nueva con su comprobante y el administrador la aprueba.`
+            : "Debes ser productor aprobado para publicar. Aplica desde tu cuenta.",
         403,
-        { needsProducer: true, producerStatus: me.producerStatus, expired: !!expired },
+        {
+          needsProducer: true, producerStatus: me.producerStatus, expired: false,
+          quota: me.communityQuota, owned: propias,
+        },
       );
     }
   }

@@ -33,21 +33,26 @@ export async function PATCH(req: Request, { params }: { params: { userId: string
     const base = target.producerAccessUntil && new Date(target.producerAccessUntil).getTime() > Date.now()
       ? new Date(target.producerAccessUntil) : new Date();
     const accessUntil = new Date(base.getTime() + months * 30 * 24 * 60 * 60 * 1000);
+    // Cada aprobacion habilita UNA comunidad mas, no barra libre.
+    const cupo = (target.communityQuota ?? 0) + 1;
     await db.update(users).set({
       producerStatus: "approved",
       platformRole: target.platformRole === "admin" ? "admin" : "producer",
       producerAccessUntil: accessUntil,
+      communityQuota: cupo,
     }).where(eq(users.id, target.id));
     await notify(target.id, {
       type: "producer_approved",
-      body: `¡Aprobado como productor! Acceso hasta ${accessUntil.toLocaleDateString()}. Ya puedes publicar comunidades.`,
+      body: `¡Pago verificado! Ya puedes publicar 1 comunidad más (cupo total: ${cupo}). Acceso hasta ${accessUntil.toLocaleDateString()}.`,
       emailSubject: "Aprobado como productor en Klanly",
       cta: { label: "Crear comunidad" },
     });
-    return ok({ userId: target.id, status: "approved", accessUntil });
+    return ok({ userId: target.id, status: "approved", accessUntil, communityQuota: cupo });
   }
 
+  // Rechazar NO quita cupos ya pagados ni toca las comunidades ya publicadas:
+  // solo deja sin efecto ESTA solicitud.
   await db.update(users).set({ producerStatus: "rejected" }).where(eq(users.id, target.id));
-  await notify(target.id, { type: "producer_rejected", body: "Tu solicitud de productor fue rechazada.", emailSubject: "Solicitud de productor rechazada" });
+  await notify(target.id, { type: "producer_rejected", body: "Tu solicitud fue rechazada. Tus comunidades publicadas siguen activas.", emailSubject: "Solicitud de productor rechazada" });
   return ok({ userId: target.id, status: "rejected" });
 }

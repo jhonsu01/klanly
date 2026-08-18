@@ -6,7 +6,7 @@ import ImageViewer from "@/components/ImageViewer";
 
 type Me = { handle: string; role: string; displayName?: string; email?: string; twoFactorEnabled?: boolean } | null;
 type Overview = { communities: number; users: number; pendingProducers: number; pendingProofs: number; pendingPayouts: number; grossRevenueCents: number };
-type Producer = { id: string; displayName: string; email: string; handle: string; producerStatus: string; planMonths?: number; proofUrl?: string; accessUntil?: string };
+type Producer = { id: string; displayName: string; email: string; handle: string; producerStatus: string; planMonths?: number; proofUrl?: string; accessUntil?: string; communityQuota?: number; ownedCommunities?: number };
 type Account = { bank: string; number: string; name: string };
 type Plan = { label: string; months: number; priceCents: number; currency: string };
 type Proof = { id: string; amountCents: number; currency: string; proofUrl?: string; userEmail: string; communityName: string };
@@ -147,6 +147,11 @@ export default function AdminPage() {
                 <div className="proof-info">
                   <a href={`/u/${p.handle}`} style={{ color: "var(--text)", textDecoration: "none" }}>{p.displayName}</a>
                   <div className="muted">{p.email}{p.planMonths ? ` · plan ${p.planMonths} mes(es)` : ""}</div>
+                  {/* Aprobar suma UN cupo: hay que ver cuantos tiene y cuantos usa */}
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    Comunidades: <b>{p.ownedCommunities ?? 0}</b> de <b>{p.communityQuota ?? 0}</b> pagadas
+                    {" · "}aprobar habilita <b>1 más</b>
+                  </div>
                 </div>
                 <div className="proof-actions">
                   {p.proofUrl && <button className="ghost" onClick={() => setViewer(p.proofUrl!)}>🔍 Ver</button>}
@@ -157,7 +162,12 @@ export default function AdminPage() {
             ))}
             <h2 style={{ marginTop: 18 }}>Aprobados ({producers.filter((p) => p.producerStatus === "approved").length})</h2>
             {producers.filter((p) => p.producerStatus === "approved").map((p) => (
-              <div className="row" key={p.id}><div>{p.displayName} <span className="muted">{p.email}</span></div><span className="pill" style={{ color: "var(--green)" }}>aprobado</span></div>
+              <div className="row" key={p.id}>
+                <div>{p.displayName} <span className="muted">{p.email}</span>
+                  <div className="muted" style={{ fontSize: 12 }}>{p.ownedCommunities ?? 0} de {p.communityQuota ?? 0} comunidades pagadas</div>
+                </div>
+                <span className="pill" style={{ color: "var(--green)" }}>aprobado</span>
+              </div>
             ))}
           </div>
         )}

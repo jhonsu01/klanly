@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { communities, users } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { currentUser } from "@/lib/auth";
 import { ok, fail } from "@/lib/http";
 
@@ -11,7 +11,16 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const u = await currentUser();
   if (!u) return fail("No autenticado", 401);
+
+  // Cupo de comunidades: cuantas puede publicar y cuantas lleva usadas.
+  const [{ propias }] = await db
+    .select({ propias: sql<number>`count(*)::int` })
+    .from(communities)
+    .where(eq(communities.ownerId, u.id));
+
   return ok({
+    communityQuota: u.communityQuota,
+    ownedCommunities: propias,
     id: u.id,
     email: u.email,
     displayName: u.displayName,
