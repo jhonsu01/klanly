@@ -57,12 +57,28 @@ export default function WorkoutPlayer({
   const [pasada, setPasada] = useState(0);        // pasadas completadas
   const [progreso, setProgreso] = useState(0);    // 0..1 dentro de la pasada
   const [restante, setRestante] = useState(0);    // segundos de descanso
+  // Un video que no arranca dejaba un rectangulo negro sin ninguna explicacion:
+  // desde el sofa era imposible saber si fallaba la red, el video o la TV.
+  const [cargando, setCargando] = useState(true);
+  const [errorVideo, setErrorVideo] = useState<string | null>(null);
+  // Si el video esta parado de verdad (pausa manual o autoplay bloqueado por
+  // la TV). No basta con la fase: la fase dice lo que queremos, no lo que pasa.
+  const [pausado, setPausado] = useState(false);
 
   const pasadas = Math.max(1, Math.ceil(objetivo / Math.max(1, workout.repsPerRound)));
   const repsHechas = Math.min(
     objetivo,
     pasada * workout.repsPerRound + Math.floor(progreso * workout.repsPerRound),
   );
+
+  /** Codigos de la IFrame API de YouTube, en cristiano. */
+  const motivoYT = (codigo: number) =>
+    codigo === 2   ? "El enlace del video no es valido."
+    : codigo === 5 ? "Esta pantalla no puede reproducir este video."
+    : codigo === 100 ? "El video ya no existe o es privado."
+    : (codigo === 101 || codigo === 150)
+      ? "El dueno del video no permite verlo fuera de YouTube."
+      : "YouTube no pudo reproducirlo (codigo " + codigo + ").";
 
   const fileRef = useRef<HTMLVideoElement | null>(null);
   const ytRef = useRef<any>(null);
@@ -98,6 +114,55 @@ export default function WorkoutPlayer({
     }
   }, [video?.kind]);
 
+  // Si a los 15 s sigue sin arrancar, es que no va a arrancar: mejor decirlo
+  // que dejar la pantalla en negro.
+  useEffect(() => {
+    if (!cargando || errorVideo) return;
+    const t = setTimeout(() => {
+      setErrorVideo("El video tarda demasiado en cargar. Comprueba la conexion de la TV.");
+    }, 15000);
+    return () => clearTimeout(t);
+  }, [cargando, errorVideo]);
+
+  /**
+   * OK del mando = pausa / reanuda, y lo maneja ESTA pagina.
+   *
+   * Antes el APK se tragaba OK para que no molestara al video. Al desbloquearlo
+   * (hacia falta para pulsar los botones de emparejar), la tecla empezo a
+   * llegar al iframe y YouTube la tomaba como pausa: el entrenamiento se
+   * quedaba congelado sin explicacion. Tragarla otra vez tampoco vale — si la
+   * TV bloquea el autoplay, seria imposible arrancar el video. Asi que se
+   * intercepta y se le da el comportamiento que cualquiera espera de OK.
+   */
+  const alternarPausa = useCallback(() => {
+    if (errorVideo || fase === "descanso" || fase === "terminado") return;
+    if (video?.kind === "file") {
+      const v = fileRef.current;
+      if (!v) return;
+      if (v.paused) { v.play().catch(() => {}); setFase("entrenando"); }
+      else v.pause();
+    } else {
+      const p = ytRef.current;
+      if (!p?.getPlayerState) return;
+      // 1 = reproduciendo, 3 = cargando
+      if (p.getPlayerState() === 1) p.pauseVideo();
+      else { p.playVideo(); setFase("entrenando"); }
+    }
+  }, [video?.kind, errorVideo, fase]);
+
+  useEffect(() => {
+    if (!bigScreen) return;
+    const alPulsar = (e: KeyboardEvent) => {
+      if (["Enter", " ", "Spacebar", "MediaPlayPause", "MediaPlay", "MediaPause"].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        alternarPausa();
+      }
+    };
+    window.addEventListener("keydown", alPulsar, true);
+    return () => window.removeEventListener("keydown", alPulsar, true);
+  }, [bigScreen, alternarPausa]);
+
   // ── Cuenta atrás del descanso ─────────────────────────────────────────────
   useEffect(() => {
     if (fase !== "descanso") return;
@@ -124,9 +189,14 @@ export default function WorkoutPlayer({
         playerVars: { rel: 0, modestbranding: 1, playsinline: 1, controls: bigScreen ? 0 : 1 },
         events: {
           onReady: (e: any) => {
+            setCargando(false);
+            // Que el mando no pueda ENTRAR al iframe con las flechas: si entra,
+            // OK se lo come YouTube y pausa el entrenamiento.
+            if (bigScreen) { try { e.target.getIframe()?.setAttribute("tabindex", "-1"); } catch {} }
             if (workout.muted) e.target.mute();
             if (autoStart) { setFase("entrenando"); e.target.playVideo(); }
           },
+          onError: (e: any) => { setCargando(false); setErrorVideo(motivoYT(e.data)); },
           // 0 = ENDED
           onStateChange: (e: any) => { if (e.data === 0) finPasada(); },
         },
@@ -142,9 +212,14 @@ export default function WorkoutPlayer({
       const sc = document.createElement("script");
       sc.id = "yt-iframe-api";
       sc.src = "https://www.youtube.com/iframe_api";
+      sc.onerror = () => setErrorVideo("La TV no pudo conectarse con YouTube. Revisa su conexion a internet.");
       document.head.appendChild(sc);
     }
-    return () => { cancelado = true; };
+    return () => {
+      cancelado = true;
+      try { ytRef.current?.destroy?.(); } catch {}
+      ytRef.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [video?.kind]);
 
@@ -157,6 +232,9 @@ export default function WorkoutPlayer({
       if (!p?.getDuration) return;
       const d = p.getDuration();
       if (d > 0) setProgreso(Math.min(1, p.getCurrentTime() / d));
+      // 1 = reproduciendo, 3 = cargando. Cualquier otra cosa esta parada.
+      const st = p.getPlayerState?.();
+      setPausado(st !== undefined && st !== 1 && st !== 3);
     }, 500);
     return () => { if (tick.current) clearInterval(tick.current); };
   }, [fase, video?.kind]);
@@ -214,6 +292,10 @@ export default function WorkoutPlayer({
             muted={workout.muted}
             playsInline
             controls={!bigScreen}
+            onLoadedData={() => setCargando(false)}
+            onPlay={() => setPausado(false)}
+            onPause={() => setPausado(true)}
+            onError={() => { setCargando(false); setErrorVideo("No se pudo cargar el archivo de video."); }}
             onTimeUpdate={(e) => {
               const v = e.currentTarget;
               if (v.duration > 0) setProgreso(v.currentTime / v.duration);
@@ -222,6 +304,27 @@ export default function WorkoutPlayer({
           />
         ) : (
           <div ref={ytHost} />
+        )}
+
+        {/* Un fallo del video tiene que LEERSE, no ser un rectangulo negro */}
+        {errorVideo && (
+          <div className="wk-overlay">
+            <div className="label" style={{ color: "var(--gold)" }}>No se pudo reproducir</div>
+            <div className="wk-motivo">{errorVideo}</div>
+            <div className="muted">Elige otra leccion en el celular.</div>
+          </div>
+        )}
+
+        {!errorVideo && cargando && (
+          <div className="wk-overlay"><div className="wk-motivo">Cargando video…</div></div>
+        )}
+
+        {bigScreen && !errorVideo && !cargando && pausado
+          && fase !== "descanso" && fase !== "terminado" && (
+          <div className="wk-overlay">
+            <div className="wk-motivo">Pausado</div>
+            <div className="muted">Pulsa OK en el control para seguir</div>
+          </div>
         )}
 
         {/* Descanso: tapa el video con la cuenta atrás */}

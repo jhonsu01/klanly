@@ -760,6 +760,12 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
   line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums;
 }
 
+/* Texto de las capas de "cargando" y de error: se lee desde el sofa */
+.wk-motivo {
+  font-size: clamp(15px, 1.6vw, 26px); font-weight: 600; color: var(--text);
+  max-width: 40ch; line-height: 1.5;
+}
+
 .wk-ctrl { display: flex; flex-direction: column; gap: 12px; }
 .wk-objetivo {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
