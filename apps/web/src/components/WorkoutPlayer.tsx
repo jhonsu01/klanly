@@ -84,6 +84,10 @@ export default function WorkoutPlayer({
   const ytRef = useRef<any>(null);
   const ytHost = useRef<HTMLDivElement | null>(null);
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Para saber si el televisor esta pudiendo con el video (ver el sondeo)
+  const marca = useRef<{ t: number; reloj: number } | null>(null);
+  const atascos = useRef(0);
+  const yaBajada = useRef(false);
 
   // ── Fin de una pasada: o descansa, o termina ──────────────────────────────
   const finPasada = useCallback(() => {
@@ -186,7 +190,16 @@ export default function WorkoutPlayer({
       if (!id) return;
       ytRef.current = new (window as any).YT.Player(ytHost.current, {
         videoId: id,
-        playerVars: { rel: 0, modestbranding: 1, playsinline: 1, controls: bigScreen ? 0 : 1 },
+        playerVars: {
+          rel: 0, modestbranding: 1, playsinline: 1,
+          controls: bigScreen ? 0 : 1,
+          // En la TV el mando lo maneja ESTA pagina. Sin esto, YouTube tambien
+          // escucha el teclado y OK le llega igual: el video se pausaba solo y
+          // encima aparecia su barra de controles, que ya no se ocultaba.
+          disablekb: bigScreen ? 1 : 0,
+          fs: bigScreen ? 0 : 1,
+          iv_load_policy: 3,   // sin anotaciones encima del ejercicio
+        },
         events: {
           onReady: (e: any) => {
             setCargando(false);
@@ -235,6 +248,31 @@ export default function WorkoutPlayer({
       // 1 = reproduciendo, 3 = cargando. Cualquier otra cosa esta parada.
       const st = p.getPlayerState?.();
       setPausado(st !== undefined && st !== 1 && st !== 3);
+
+      /* ── ¿Le esta costando al televisor? ─────────────────────────────────
+         Al agrandar el video, YouTube pasa a servir una calidad mayor y un
+         aparato modesto puede no seguirle el ritmo: se ve a tirones. Aqui se
+         compara cuanto avanza el video contra el reloj de pared. Si va muy por
+         detras durante ~3 s, se le pide una calidad menor UNA vez. Mientras la
+         TV pueda, no se toca nada: no se sacrifica nitidez por si acaso. */
+      const ahora = Date.now();
+      const t = p.getCurrentTime?.() ?? 0;
+      if (st === 3) {
+        atascos.current++;                       // parado cargando = atasco
+      } else if (st === 1 && marca.current) {
+        const dReloj = (ahora - marca.current.reloj) / 1000;
+        const dVideo = t - marca.current.t;
+        if (dReloj > 0 && dVideo / dReloj < 0.7) atascos.current++;
+        else atascos.current = 0;
+      } else {
+        atascos.current = 0;                     // en pausa no se mide
+      }
+      if (st === 1 || st === 3) marca.current = { t, reloj: ahora };
+
+      if (atascos.current >= 6 && !yaBajada.current) {
+        yaBajada.current = true;
+        try { p.setPlaybackQuality?.("hd720"); } catch {}
+      }
     }, 500);
     return () => { if (tick.current) clearInterval(tick.current); };
   }, [fase, video?.kind]);
