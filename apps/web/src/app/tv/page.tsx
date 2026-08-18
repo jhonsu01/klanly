@@ -117,15 +117,20 @@ export default function TvPage() {
   if (orden) {
     const esEntrenamiento = orden.kind === "workout" && orden.workout;
     const v = parseVideo(orden.videoUrl);
-    return (
-      <div className="tv">
-        <div className="tv-barra">
-          <div>
-            <div className="tv-curso">{orden.courseTitle}</div>
-            <div className="tv-leccion">{orden.title}</div>
-          </div>
-          <div className="tv-quien">Enviado por {orden.sentBy}</div>
+    /* La cabecera de un entrenamiento comparte fila con el contador: apilarlas
+       dejaba un tercio de la pantalla en texto y el video salia pequeno. */
+    const cabecera = (
+      <div className="tv-titulo">
+        <div className="tv-curso">
+          {orden.courseTitle} <span className="tv-quien">· Enviado por {orden.sentBy}</span>
         </div>
+        <div className="tv-leccion">{orden.title}</div>
+      </div>
+    );
+
+    return (
+      <div className={`tv${esEntrenamiento ? " tv-wk" : ""}`}>
+        {!esEntrenamiento && <div className="tv-barra">{cabecera}</div>}
 
         {esEntrenamiento ? (
           <WorkoutPlayer
@@ -135,6 +140,7 @@ export default function TvPage() {
             forcedReps={orden.reps ?? undefined}
             bigScreen
             autoStart
+            heading={cabecera}
           />
         ) : v?.kind === "youtube" ? (
           <div className="tv-video">

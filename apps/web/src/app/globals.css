@@ -776,13 +776,19 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
   border-radius: 12px; padding: 16px 18px;
 }
 
-/* ── Vista de pantalla grande (Android TV) ───────────────────────────────── */
-.wk-tv .wk-n { font-size: clamp(64px, 9vw, 132px); }
-.wk-tv .wk-sep, .wk-tv .wk-total { font-size: clamp(32px, 4.5vw, 64px); }
-.wk-tv .wk-rondas b { font-size: clamp(20px, 2.4vw, 34px); }
-.wk-tv .wk-barra { height: 14px; border-radius: 7px; }
+/* ── Vista de pantalla grande (Android TV) ─────────────────────────────────
+   El contador se lee de reojo mientras el alumno se mueve: tiene que ser
+   grande, pero NO enorme. Cada pixel de alto que ocupa aqui se lo quita al
+   video, que es lo que de verdad se mira. Con ~5vw ya se lee a tres metros. */
+.wk-tv { gap: 1.2vh; }
+.wk-tv .wk-hud { align-items: center; gap: 2.4vw; flex-wrap: nowrap; }
+.wk-tv .wk-n { font-size: clamp(34px, 4.6vw, 78px); }
+.wk-tv .wk-sep, .wk-tv .wk-total { font-size: clamp(20px, 2.6vw, 42px); }
+.wk-tv .wk-reps .label { margin-left: .6vw; }
+.wk-tv .wk-rondas b { font-size: clamp(16px, 1.9vw, 30px); }
+.wk-tv .wk-barra { height: .8vh; min-height: 6px; border-radius: 99px; }
 .wk-tv .wk-video { border-radius: 0; }
-.wk-tv .label { font-size: clamp(12px, 1.3vw, 18px); }
+.wk-tv .label { font-size: clamp(11px, 1.05vw, 15px); }
 
 /* ── Ajustes del modo entrenamiento en el editor ─────────────────────────── */
 .wkf { margin-top: 14px; }
@@ -827,6 +833,9 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
   /* La TV recorta los bordes (overscan): margen de seguridad */
   padding: 3vh 4vw;
 }
+/* En entrenamiento el margen se aprieta: el video manda. Se conserva lo
+   justo para que ningun televisor con overscan recorte el contador. */
+.tv-wk { padding: 2vh 2.4vw; }
 .tv-espera { align-items: center; justify-content: center; gap: 2.2vh; text-align: center; }
 .tv-marca { display: flex; align-items: center; gap: 1.4vw; margin-bottom: 1vh; }
 .tv-logo {
@@ -865,12 +874,24 @@ button:not(.ghost):not(.tab):not(.icon-btn):not(.pact):not(.md-tool):not(.sheet-
   text-transform: uppercase; color: var(--dim);
 }
 .tv-leccion { font-size: 2.2vw; font-weight: 650; letter-spacing: -.02em; margin-top: .6vh; }
+/* Titulo dentro de la fila del contador: se encoge antes que las cifras y
+   nunca las empuja fuera de la pantalla. */
+.tv-titulo { flex: 1 1 auto; min-width: 0; }
+.tv-wk .tv-leccion {
+  font-size: clamp(16px, 1.75vw, 30px); margin-top: .4vh;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tv-wk .tv-curso { font-size: clamp(9px, .82vw, 14px); }
+.tv-wk .tv-quien { font-size: inherit; }
 .tv-quien { font-family: var(--font-mono); font-size: .95vw; color: var(--dim); }
 .tv-video { flex: 1; border-radius: 1vw; overflow: hidden; background: #000; }
 .tv-video iframe, .tv-video video { width: 100%; height: 100%; border: 0; display: block; }
 /* El reproductor de entrenamiento ocupa el alto restante */
 .tv .wk { flex: 1; min-height: 0; }
 .tv .wk-video { flex: 1; min-height: 0; aspect-ratio: auto; }
+/* El video ya no se recorta a 16/9 dentro de su caja: se estira hasta donde
+   llegue el alto disponible, y al ganar alto gana ancho. */
+.tv .wk-video > video { object-fit: contain; }
 
 /* Estado "pantalla lista" (ya emparejada, sin mostrar el PIN a lo grande) */
 .tv-listo {

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { parseVideo } from "@/lib/video";
 
 export type Workout = {
@@ -35,6 +35,13 @@ export default function WorkoutPlayer({
   /** Objetivo fijado desde fuera (cuando llega enviado desde el celular). */
   forcedReps,
   autoStart = false,
+  /**
+   * Titulo que se dibuja DENTRO de la fila del contador (solo pantalla grande).
+   * En un televisor, cada linea de texto por encima del video le roba alto —y
+   * el alto es lo que decide el tamano del video—, asi que titulo y contador
+   * comparten fila en vez de apilarse.
+   */
+  heading,
 }: {
   videoUrl: string;
   workout: Workout;
@@ -42,6 +49,7 @@ export default function WorkoutPlayer({
   bigScreen?: boolean;
   forcedReps?: number;
   autoStart?: boolean;
+  heading?: ReactNode;
 }) {
   const video = parseVideo(videoUrl);
   const [objetivo, setObjetivo] = useState(forcedReps ?? workout.defaultReps);
@@ -182,6 +190,7 @@ export default function WorkoutPlayer({
     <div className={`wk${bigScreen ? " wk-tv" : ""}`}>
       {/* Panel de conteo: lo que el alumno mira de reojo mientras entrena */}
       <div className="wk-hud">
+        {heading}
         <div className="wk-reps">
           <span className="wk-n">{repsHechas}</span>
           <span className="wk-sep">/</span>
